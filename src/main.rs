@@ -1,10 +1,9 @@
 extern crate clap;
 
+mod ioutils;
+
 use std::collections::HashMap;
-use std::env;
-use std::fs::{remove_file, File};
-use std::io::{Result, Write};
-use std::path::PathBuf;
+use std::io::Result;
 
 use clap::{App, Arg, Values};
 
@@ -41,18 +40,18 @@ pub fn run(files: Values) -> Result<()> {
     }
 
     // Create temporary file
-    let mut dir: PathBuf = env::temp_dir();
-    dir.push("tmp-file");
-    let mut tmp = File::create(&dir)?;
-    for file in set_files.keys() {
-        let file_with_newline = format!("{}\n", file);
-        let bytes_read = tmp.write(file_with_newline.as_bytes())?;
-        println!("Read {} bytes from {}", bytes_read, file);
-    }
+    // let fileprefix = "mmv-";
+    let mut tmp = ioutils::temp_file("", "mmv-")?;
+
+    // for file in set_files.keys() {
+    // let file_with_newline = format!("{}\n", file);
+    // let bytes_read = tmp.write(file_with_newline.as_bytes())?;
+    // println!("Read {} bytes from {}", bytes_read, file);
+    // }
 
     // Remove tmp file.
     // NOTE: the file is automatically closed when out of scope.
-    remove_file(dir)?;
+    // remove_file(dir)?;
 
     Ok(())
 }
