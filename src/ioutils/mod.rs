@@ -40,7 +40,7 @@ pub fn next_random() -> String {
     ((r as f64) % 1e9).to_string()
 }
 
-pub fn temp_file(dirname: &str, pattern: &str) -> Result<File> {
+pub fn temp_file(dirname: &str, pattern: &str) -> Result<(File, String)> {
     let mut dir = PathBuf::from(dirname);
     if dirname.len() == 0 {
         dir = env::temp_dir();
@@ -60,7 +60,7 @@ pub fn temp_file(dirname: &str, pattern: &str) -> Result<File> {
         let result = OpenOptions::new()
             .write(true)
             .create_new(true)
-            .open(filename);
+            .open(&filename);
 
         if result.is_err() {
             n_conflict += 1;
@@ -76,7 +76,8 @@ pub fn temp_file(dirname: &str, pattern: &str) -> Result<File> {
             let mut permissions = metadata.permissions();
             permissions.set_mode(0o600);
             tmp.set_permissions(permissions)?;
-            return Ok(tmp);
+
+            return Ok((tmp, filename));
         }
     }
 
