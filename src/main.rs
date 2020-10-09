@@ -3,7 +3,8 @@ extern crate clap;
 mod ioutils;
 
 use std::collections::HashMap;
-use std::io::Result;
+use std::fs::remove_file;
+use std::io::{Result, Write};
 
 use clap::{App, Arg, Values};
 
@@ -28,30 +29,26 @@ fn main() -> Result<()> {
 }
 
 pub fn run(files: Values) -> Result<()> {
-    // Check for duplicate files
-    let mut set_files = HashMap::<&str, bool>::new();
+    // Check for duplicate paths
+    let mut set_paths = HashMap::<&str, bool>::new();
     for file in files {
-        if set_files.contains_key(file) {
+        if set_paths.contains_key(file) {
             eprintln!("Duplicate source {}", file);
             return Ok(());
         }
 
-        set_files.insert(file, true);
+        set_paths.insert(file, true);
     }
 
     // Create temporary file
-    // let fileprefix = "mmv-";
-    let mut tmp = ioutils::temp_file("", "mmv-")?;
-
-    // for file in set_files.keys() {
-    // let file_with_newline = format!("{}\n", file);
-    // let bytes_read = tmp.write(file_with_newline.as_bytes())?;
-    // println!("Read {} bytes from {}", bytes_read, file);
-    // }
+    let (mut tmp, file_path) = ioutils::temp_file("", "mmv-")?;
+    for path in set_paths.keys() {
+        let path_with_newline = format!("{}\n", path);
+        tmp.write(path_with_newline.as_bytes())?;
+    }
 
     // Remove tmp file.
-    // NOTE: the file is automatically closed when out of scope.
-    // remove_file(dir)?;
+    remove_file(file_path)?;
 
     Ok(())
 }
