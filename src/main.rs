@@ -64,6 +64,7 @@ pub fn run(files: Values) -> Result<()> {
     }
     args.push(&tmp_file_path);
 
+    // Create and execute command.
     Command::new(fields[0]) // First item is editor command
         .args(args)
         .stdin(Stdio::inherit())
