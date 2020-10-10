@@ -44,28 +44,36 @@ pub fn run(files: Values) -> Result<()> {
     }
 
     // Create temporary file
-    let (mut tmp, file_path) = ioutils::temp_file("", "mmv-")?;
+    let (mut tmp, tmp_file_path) = ioutils::temp_file("", "mmv-")?;
     for path in set_paths.keys() {
         let path_with_newline = format!("{}\n", path);
         tmp.write(path_with_newline.as_bytes())?;
     }
 
-    // Read EDITOR env and execute command
+    // Read EDITOR env
     let mut editor = env::var("EDITOR").unwrap();
     if editor.len() == 0 {
         editor = String::from("vi");
     }
 
-    Command::new(editor)
-        .args(&[&file_path])
+    // Separate editor command from its args.
+    let fields: Vec<&str> = editor.splitn(2, " ").collect();
+    let mut args = Vec::<&str>::new();
+    if fields.len() > 1 {
+        args = fields[1].split_whitespace().collect();
+    }
+    args.push(&tmp_file_path);
+
+    Command::new(fields[0]) // First item is editor command
+        .args(args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .output()
-        .expect("failed to execute process");
+        .output() // executes command
+        .expect("Failed to open editor");
 
     // Remove tmp file.
-    remove_file(file_path)?;
+    remove_file(tmp_file_path)?;
 
     Ok(())
 }
