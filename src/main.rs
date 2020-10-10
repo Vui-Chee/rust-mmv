@@ -3,8 +3,11 @@ extern crate clap;
 mod ioutils;
 
 use std::collections::HashMap;
+use std::env;
 use std::fs::remove_file;
 use std::io::{Result, Write};
+use std::process::{Command, Stdio};
+use std::str;
 
 use clap::{App, Arg, Values};
 
@@ -46,6 +49,20 @@ pub fn run(files: Values) -> Result<()> {
         let path_with_newline = format!("{}\n", path);
         tmp.write(path_with_newline.as_bytes())?;
     }
+
+    // Read EDITOR env and execute command
+    let mut editor = env::var("EDITOR").unwrap();
+    if editor.len() == 0 {
+        editor = String::from("vi");
+    }
+
+    Command::new(editor)
+        .args(&[&file_path])
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .expect("failed to execute process");
 
     // Remove tmp file.
     remove_file(file_path)?;
