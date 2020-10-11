@@ -11,6 +11,8 @@ use std::str;
 
 use clap::{App, Arg, Values};
 
+static APP_NAME: &'static str = "mmv";
+
 fn main() -> Result<()> {
     let file_args = Arg::new("files")
         .about("Files to rename")
@@ -41,7 +43,8 @@ pub fn run(files: Values) -> Result<()> {
     }
 
     // Create temporary file
-    let (mut tmp, tmp_file_path) = ioutils::temp_file("", "mmv-")?;
+    let tmp_filename_prefix = format!("{}{}", APP_NAME, "-");
+    let (mut tmp, tmp_file_path) = ioutils::temp_file("", &tmp_filename_prefix)?;
     for path in unique_paths {
         let path_with_newline = format!("{}\n", path);
         tmp.write(path_with_newline.as_bytes())?;
