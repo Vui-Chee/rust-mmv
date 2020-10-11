@@ -2,7 +2,7 @@ extern crate clap;
 
 mod ioutils;
 
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::env;
 use std::fs::remove_file;
 use std::io::{Result, Write};
@@ -33,19 +33,16 @@ fn main() -> Result<()> {
 
 pub fn run(files: Values) -> Result<()> {
     // Check for duplicate paths
-    let mut set_paths = HashMap::<&str, bool>::new();
-    for file in files {
-        if set_paths.contains_key(file) {
-            eprintln!("Duplicate source {}", file);
-            return Ok(());
-        }
-
-        set_paths.insert(file, true);
+    let original_len = files.len();
+    let unique_paths: HashSet<_> = files.collect();
+    if unique_paths.len() != original_len {
+        eprintln!("Duplicate source(s)");
+        return Ok(());
     }
 
     // Create temporary file
     let (mut tmp, tmp_file_path) = ioutils::temp_file("", "mmv-")?;
-    for path in set_paths.keys() {
+    for path in unique_paths {
         let path_with_newline = format!("{}\n", path);
         tmp.write(path_with_newline.as_bytes())?;
     }
