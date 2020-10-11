@@ -51,9 +51,10 @@ pub fn run(files: Values) -> Result<()> {
     }
 
     // Read EDITOR env
-    let mut editor = env::var("EDITOR").unwrap();
+    let default_editor = String::from("vi");
+    let mut editor = env::var("EDITOR").unwrap_or(default_editor.to_owned());
     if editor.len() == 0 {
-        editor = String::from("vi");
+        editor = default_editor;
     }
 
     // Separate editor command from its args.
