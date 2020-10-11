@@ -66,15 +66,19 @@ pub fn run(files: Values) -> Result<()> {
     args.push(&tmp_file_path);
 
     // Create and execute command.
-    Command::new(fields[0]) // First item is editor command
+    if let Err(cmd_err) = Command::new(fields[0]) // First item is editor command
         .args(args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .output() // executes command
-        .expect("Failed to open editor");
+        // executes command
+        .output()
+    {
+        // Executing command has errors.
+        eprintln!("{}", cmd_err);
+    }
 
-    // Remove tmp file.
+    // Remove tmp file whether or not cmd succeeds or fails.
     remove_file(tmp_file_path)?;
 
     Ok(())
