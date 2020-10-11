@@ -2,10 +2,11 @@ extern crate clap;
 
 mod ioutils;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs::remove_file;
+use std::fs::{read_to_string, remove_file};
 use std::io::{Result, Write};
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::str;
 
@@ -45,7 +46,7 @@ pub fn run(files: Values) -> Result<()> {
     // Create temporary file
     let tmp_filename_prefix = format!("{}{}", APP_NAME, "-");
     let (mut tmp, tmp_file_path) = ioutils::temp_file("", &tmp_filename_prefix)?;
-    for path in unique_paths {
+    for path in &unique_paths {
         let path_with_newline = format!("{}\n", path);
         tmp.write(path_with_newline.as_bytes())?;
     }
@@ -77,6 +78,18 @@ pub fn run(files: Values) -> Result<()> {
         // Executing command has errors.
         eprintln!("{}", cmd_err);
     }
+
+    // Read destination paths from tmp file.
+    // (Happens after user updates paths with editor)
+    let mut src_to_dst_map = HashMap::<PathBuf, PathBuf>::new();
+    let contents = read_to_string(&tmp_file_path)?;
+    contents
+        .trim_end_matches("\n")
+        .split("\n")
+        .zip(unique_paths.iter())
+        .for_each(|(dst, src)| {
+            src_to_dst_map.insert(PathBuf::from(src), PathBuf::from(dst));
+        });
 
     // Remove tmp file whether or not cmd succeeds or fails.
     remove_file(tmp_file_path)?;
