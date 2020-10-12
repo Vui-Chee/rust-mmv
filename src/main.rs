@@ -100,6 +100,7 @@ pub fn run(files: Values) -> Result<(), String> {
     let edited_lines: Vec<&str> = contents
         .trim_end_matches("\n")
         .split_terminator("\n") // Normal split can result in [""]
+        .filter(|paths| paths.len() > 0) // Clear empty paths
         .collect();
 
     // Raise error when user add/deletes a line from tmp file.
