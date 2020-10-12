@@ -1,3 +1,10 @@
+//! Temporary file creation module.
+//!
+//! Exposes temp_file() which allows a user to
+//! create a temporary file using a custom prefix
+//! which is followed by a randomly generated
+//! 9-digit suffix.
+
 use std::env;
 use std::fs::File;
 use std::fs::OpenOptions;
