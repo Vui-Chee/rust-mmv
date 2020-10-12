@@ -29,7 +29,7 @@ fn main() -> Result<(), String> {
 
     let matches = App::new("Rust mmv")
         .version("1.0")
-        .about("Does awesome things")
+        .about("Performs `mv` on multiple paths.")
         .arg(&file_args)
         .get_matches();
 
