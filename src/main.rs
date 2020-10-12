@@ -111,7 +111,7 @@ pub fn run(files: Values) -> Result<(), RunError> {
     let contents = read_to_string(&tmp_file_path).unwrap();
     let edited_lines: Vec<&str> = contents
         .trim_end_matches("\n")
-        .split_terminator("\n")
+        .split_terminator("\n") // Normal split can result in [""]
         .collect();
 
     // Raise error when user add/deletes a line from tmp file.
