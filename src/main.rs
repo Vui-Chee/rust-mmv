@@ -87,9 +87,16 @@ pub fn run(files: Values) -> Result<()> {
     // After this the paths data is no longer needed.
     let mut src_to_dst_map = HashMap::<PathBuf, PathBuf>::new();
     let contents = read_to_string(&tmp_file_path)?;
-    contents
-        .trim_end_matches("\n")
-        .split("\n")
+    let edited_lines: Vec<&str> = contents.trim_end_matches("\n").split("\n").collect();
+
+    // Raise error when user add/deletes a line from tmp file.
+    if edited_lines.len() != unique_paths.len() {
+        eprintln!("Do not add or delete lines.");
+        return Ok(()); // For now just return empty.
+    }
+
+    edited_lines
+        .iter()
         .zip(unique_paths.iter())
         .for_each(|(dst, src)| {
             src_to_dst_map.insert(PathBuf::from(src), PathBuf::from(dst));
