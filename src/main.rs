@@ -22,7 +22,7 @@ pub struct RunError {
 }
 
 impl RunError {
-    pub fn new(msg: &str, filepath: Option<String>) -> Result<(), Self> {
+    pub fn new(msg: &str, filepath: Option<String>) -> Result<String, Self> {
         Err(RunError {
             msg: String::from(msg),
             filepath,
@@ -42,23 +42,31 @@ fn main() -> Result<(), RunError> {
         .arg(&file_args)
         .get_matches();
 
-    // If any error is raised during run(), remove tmp file (if any).
+    // Remove tmp file after run().
     let file_inputs: Option<Values> = matches.values_of(file_args.get_name());
     if let Some(files) = file_inputs {
-        run(files).unwrap_or_else(|err| {
-            if let Some(filepath) = err.filepath {
-                remove_file(filepath).unwrap_or_else(|msg| {
-                    panic!("Error removing tmp file: {}", msg);
-                });
-            };
-            eprintln!("{}", err.msg);
-        });
+        let remove_file_wrapper = |filepath: String| {
+            remove_file(filepath).unwrap_or_else(|msg| {
+                panic!("Error removing tmp file: {}", msg);
+            });
+        };
+
+        match run(files) {
+            Ok(filepath) => remove_file_wrapper(filepath),
+            Err(err) => {
+                if let Some(filepath) = err.filepath {
+                    remove_file_wrapper(filepath)
+                };
+                // Print additional error messages.
+                eprintln!("{}", err.msg);
+            }
+        };
     }
 
     Ok(())
 }
 
-pub fn run(files: Values) -> Result<(), RunError> {
+pub fn run(files: Values) -> Result<String, RunError> {
     // Check for duplicate paths
     let original_len = files.len();
     let unique_paths: HashSet<_> = files.collect();
@@ -127,5 +135,5 @@ pub fn run(files: Values) -> Result<(), RunError> {
         });
     mmv::rename(src_to_dst_map);
 
-    Ok(())
+    Ok(tmp_file_path)
 }
