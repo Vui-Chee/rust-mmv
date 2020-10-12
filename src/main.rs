@@ -3,9 +3,8 @@ extern crate clap;
 mod ioutils;
 mod mmv;
 
-#[macro_use]
 mod macros;
-pub use macros::ScopeCall;
+use macros::*;
 
 // Default modules
 use std::collections::{HashMap, HashSet};
