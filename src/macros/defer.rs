@@ -14,6 +14,7 @@ impl<F: FnOnce()> Drop for ScopeCall<F> {
     }
 }
 
+#[macro_export]
 macro_rules! expr {
     ($e: expr) => {
         $e
