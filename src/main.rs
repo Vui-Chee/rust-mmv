@@ -3,6 +3,11 @@ extern crate clap;
 mod ioutils;
 mod mmv;
 
+#[macro_use]
+mod macros;
+pub use macros::ScopeCall;
+
+// Default modules
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{read_to_string, remove_file};
@@ -11,26 +16,12 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::str;
 
+// External modules
 use clap::{App, Arg, Values};
 
 static APP_NAME: &'static str = "mmv";
 
-#[derive(Debug)]
-pub struct RunError {
-    pub msg: String,
-    pub filepath: Option<String>,
-}
-
-impl RunError {
-    pub fn new(msg: &str, filepath: Option<String>) -> Result<String, Self> {
-        Err(RunError {
-            msg: String::from(msg),
-            filepath,
-        })
-    }
-}
-
-fn main() -> Result<(), RunError> {
+fn main() -> Result<(), String> {
     let file_args = Arg::new("files")
         .about("Files to rename")
         .required(true)
@@ -45,38 +36,26 @@ fn main() -> Result<(), RunError> {
     // Remove tmp file after run().
     let file_inputs: Option<Values> = matches.values_of(file_args.get_name());
     if let Some(files) = file_inputs {
-        let remove_file_wrapper = |filepath: String| {
-            remove_file(filepath).unwrap_or_else(|msg| {
-                panic!("Error removing tmp file: {}", msg);
-            });
-        };
-
-        match run(files) {
-            Ok(filepath) => remove_file_wrapper(filepath),
-            Err(err) => {
-                if let Some(filepath) = err.filepath {
-                    remove_file_wrapper(filepath)
-                };
-                // Print additional error messages.
-                eprintln!("{}", err.msg);
-            }
-        };
+        run(files).unwrap_or_else(|msg| {
+            eprintln!("{}", msg);
+        });
     }
 
     Ok(())
 }
 
-pub fn run(files: Values) -> Result<String, RunError> {
+pub fn run(files: Values) -> Result<(), String> {
     // Check for duplicate paths
     let original_len = files.len();
     let unique_paths: HashSet<_> = files.collect();
     if unique_paths.len() != original_len {
-        return RunError::new("Duplicate source(s)", None);
+        return Err(String::from("Duplicate source(s)"));
     }
 
     // Create temporary file
     let tmp_filename_prefix = format!("{}{}", APP_NAME, "-");
     let (mut tmp, tmp_file_path) = ioutils::temp_file("", &tmp_filename_prefix).unwrap();
+    defer!(remove_file(&tmp_file_path).unwrap());
     for path in &unique_paths {
         let path_with_newline = format!("{}\n", path);
         tmp.write(path_with_newline.as_bytes()).unwrap();
@@ -107,7 +86,7 @@ pub fn run(files: Values) -> Result<String, RunError> {
         .output()
     {
         // Executing command has errors.
-        return RunError::new(&cmd_err.to_string(), Some(tmp_file_path));
+        return Err(format!("Error executing command:\n{}", cmd_err.to_string()));
     }
 
     // Read destination paths from tmp file.
@@ -124,7 +103,7 @@ pub fn run(files: Values) -> Result<String, RunError> {
 
     // Raise error when user add/deletes a line from tmp file.
     if edited_lines.len() != unique_paths.len() {
-        return RunError::new("Do not add or delete lines.", Some(tmp_file_path));
+        return Err(String::from("Do not add or delete lines."));
     }
 
     edited_lines
@@ -135,5 +114,5 @@ pub fn run(files: Values) -> Result<String, RunError> {
         });
     mmv::rename(src_to_dst_map);
 
-    Ok(tmp_file_path)
+    Ok(())
 }
