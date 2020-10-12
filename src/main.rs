@@ -6,7 +6,7 @@ mod mmv;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{read_to_string, remove_file};
-use std::io::{Result, Write};
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::str;
@@ -15,7 +15,22 @@ use clap::{App, Arg, Values};
 
 static APP_NAME: &'static str = "mmv";
 
-fn main() -> Result<()> {
+#[derive(Debug)]
+pub struct RunError {
+    pub msg: String,
+    pub filepath: Option<String>,
+}
+
+impl RunError {
+    pub fn new(msg: &str, filepath: Option<String>) -> Result<(), Self> {
+        Err(RunError {
+            msg: String::from(msg),
+            filepath,
+        })
+    }
+}
+
+fn main() -> Result<(), RunError> {
     let file_args = Arg::new("files")
         .about("Files to rename")
         .required(true)
@@ -27,29 +42,36 @@ fn main() -> Result<()> {
         .arg(&file_args)
         .get_matches();
 
+    // If any error is raised during run(), remove tmp file (if any).
     let file_inputs: Option<Values> = matches.values_of(file_args.get_name());
     if let Some(files) = file_inputs {
-        run(files)?;
+        run(files).unwrap_or_else(|err| {
+            if let Some(filepath) = err.filepath {
+                remove_file(filepath).unwrap_or_else(|msg| {
+                    panic!("Error removing tmp file: {}", msg);
+                });
+            };
+            eprintln!("{}", err.msg);
+        });
     }
 
     Ok(())
 }
 
-pub fn run(files: Values) -> Result<()> {
+pub fn run(files: Values) -> Result<(), RunError> {
     // Check for duplicate paths
     let original_len = files.len();
     let unique_paths: HashSet<_> = files.collect();
     if unique_paths.len() != original_len {
-        eprintln!("Duplicate source(s)");
-        return Ok(());
+        return RunError::new("Duplicate source(s)", None);
     }
 
     // Create temporary file
     let tmp_filename_prefix = format!("{}{}", APP_NAME, "-");
-    let (mut tmp, tmp_file_path) = ioutils::temp_file("", &tmp_filename_prefix)?;
+    let (mut tmp, tmp_file_path) = ioutils::temp_file("", &tmp_filename_prefix).unwrap();
     for path in &unique_paths {
         let path_with_newline = format!("{}\n", path);
-        tmp.write(path_with_newline.as_bytes())?;
+        tmp.write(path_with_newline.as_bytes()).unwrap();
     }
 
     // Read EDITOR env
@@ -77,7 +99,7 @@ pub fn run(files: Values) -> Result<()> {
         .output()
     {
         // Executing command has errors.
-        eprintln!("{}", cmd_err);
+        return RunError::new(&cmd_err.to_string(), Some(tmp_file_path));
     }
 
     // Read destination paths from tmp file.
@@ -86,13 +108,15 @@ pub fn run(files: Values) -> Result<()> {
     // PathBuf is used to pass ownership from main() into rename().
     // After this the paths data is no longer needed.
     let mut src_to_dst_map = HashMap::<PathBuf, PathBuf>::new();
-    let contents = read_to_string(&tmp_file_path)?;
-    let edited_lines: Vec<&str> = contents.trim_end_matches("\n").split("\n").collect();
+    let contents = read_to_string(&tmp_file_path).unwrap();
+    let edited_lines: Vec<&str> = contents
+        .trim_end_matches("\n")
+        .split_terminator("\n")
+        .collect();
 
     // Raise error when user add/deletes a line from tmp file.
     if edited_lines.len() != unique_paths.len() {
-        eprintln!("Do not add or delete lines.");
-        return Ok(()); // For now just return empty.
+        return RunError::new("Do not add or delete lines.", Some(tmp_file_path));
     }
 
     edited_lines
@@ -102,9 +126,6 @@ pub fn run(files: Values) -> Result<()> {
             src_to_dst_map.insert(PathBuf::from(src), PathBuf::from(dst));
         });
     mmv::rename(src_to_dst_map);
-
-    // Remove tmp file whether or not cmd succeeds or fails.
-    remove_file(tmp_file_path)?;
 
     Ok(())
 }
