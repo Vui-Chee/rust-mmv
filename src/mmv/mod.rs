@@ -40,5 +40,9 @@ pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
         }
     }
 
+    // Remove redundant mappings from both HashMap.
+    file_map.retain(|src, dst| src != dst);
+    rev.retain(|src, dst| src != dst);
+
     Ok(())
 }
