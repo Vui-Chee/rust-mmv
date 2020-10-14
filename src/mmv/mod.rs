@@ -32,7 +32,11 @@ pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
 
                 file_map.insert(expanded_src.clone(), expanded_dst.clone());
                 rev.insert(expanded_dst, expanded_src);
+            } else {
+                return Err(format!("No such file/directory {:?}", dst));
             }
+        } else {
+            return Err(format!("No such file/directory {:?}", src));
         }
     }
 
