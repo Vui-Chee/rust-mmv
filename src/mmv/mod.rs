@@ -1,5 +1,8 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use super::ioutils::next_random;
 
 pub fn rename(files: HashMap<PathBuf, PathBuf>) {
     match build_renames(files) {
@@ -72,8 +75,21 @@ pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
 
         if cycle {
             println!("Yah detected a cycle!");
+            let tmp = random_path(dst.parent().unwrap());
+            println!("Random tmp {}", tmp);
         }
     }
 
     Ok(())
+}
+
+fn random_path(dir: &Path) -> String {
+    // Keep running till a path string is generated
+    // that does not exist in file system.
+    loop {
+        let new_path = dir.join(next_random());
+        if let Err(_err) = fs::metadata(&new_path) {
+            return new_path.to_str().unwrap().to_owned();
+        }
+    }
 }
