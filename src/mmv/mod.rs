@@ -44,5 +44,36 @@ pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
     file_map.retain(|src, dst| src != dst);
     rev.retain(|src, dst| src != dst);
 
+    // Find cyclic groups
+    let mut vs = HashMap::<&PathBuf, i32>::new();
+    let mut cycle = false;
+    let mut i = 0;
+
+    for (_, mut dst) in &file_map {
+        if let Some(&group_num) = vs.get(dst) {
+            if group_num > 0 {
+                continue;
+            }
+        }
+
+        i += 1;
+
+        // Detect cycle
+        while let Some(dst_dst) = file_map.get(dst) {
+            vs.insert(&dst, i); // Set the group number to i.
+            dst = dst_dst;
+            if let Some(&group_num) = vs.get(dst_dst) {
+                if group_num > 0 {
+                    cycle = group_num == i;
+                    break;
+                }
+            }
+        }
+
+        if cycle {
+            println!("Yah detected a cycle!");
+        }
+    }
+
     Ok(())
 }
