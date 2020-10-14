@@ -76,20 +76,21 @@ pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
         if cycle {
             println!("Yah detected a cycle!");
             let tmp = random_path(dst.parent().unwrap());
-            println!("Random tmp {}", tmp);
+            println!("Random tmp {:?}", tmp);
+            *vs.get_mut(dst).unwrap() -= 1;
         }
     }
 
     Ok(())
 }
 
-fn random_path(dir: &Path) -> String {
+fn random_path(dir: &Path) -> PathBuf {
     // Keep running till a path string is generated
     // that does not exist in file system.
     loop {
         let new_path = dir.join(next_random());
         if let Err(_err) = fs::metadata(&new_path) {
-            return new_path.to_str().unwrap().to_owned();
+            return new_path;
         }
     }
 }
