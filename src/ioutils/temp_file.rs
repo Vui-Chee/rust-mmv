@@ -8,7 +8,7 @@
 use std::env;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::Result;
+use std::io::{Error, ErrorKind, Result};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process;
@@ -93,5 +93,5 @@ pub fn temp_file(dirname: &str, pattern: &str) -> Result<(File, String)> {
     }
 
     // raise IO error
-    panic!("Failed to create temporary file.")
+    Err(Error::new(ErrorKind::Other, "Failed to create temp file"))
 }
