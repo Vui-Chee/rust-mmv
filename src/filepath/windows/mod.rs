@@ -65,3 +65,12 @@ pub fn volume_name_len(path: &Path) -> usize {
 
     0
 }
+
+#[test]
+fn test_volume_name_len() {
+    let path = Path::new("C:\\");
+    assert_eq!(volume_name_len(&path), 2);
+    // UNC begins with \\
+    let path = Path::new("\\\\teela\\admin");
+    assert_eq!(volume_name_len(&path), 13);
+}
