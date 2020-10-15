@@ -43,6 +43,10 @@ pub fn next_random() -> String {
     // Raise to u64 to avoid overflow issues
     let r: u64 = (*rand as u64) * 1664525 + 1013904223; // constants from Numerical Recipes
 
+    // Reset rand so that each time this function is called,
+    // a new random value is generated.
+    *rand = 0;
+
     // Lock will be unlocked when rand goes out of scope.
     ((r as f64) % 1e9).to_string()
 }
