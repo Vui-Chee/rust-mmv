@@ -4,14 +4,20 @@ use std::path::{Path, PathBuf};
 
 use super::ioutils::next_random;
 
+#[derive(Debug)]
+pub struct Edge {
+    pub src: PathBuf,
+    pub dst: PathBuf,
+}
+
 pub fn rename(files: HashMap<PathBuf, PathBuf>) {
     match build_renames(files) {
-        Ok(()) => (),
+        Ok(_renames) => (),
         Err(msg) => eprintln!("{}", msg),
     };
 }
 
-pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
+pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<Vec<Edge>, String> {
     // Represents the reverse of files - where all edges are reversed.
     // Eg. A -> B becomes B -> A
     let mut rev = HashMap::<PathBuf, PathBuf>::new();
@@ -48,6 +54,7 @@ pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
     rev.retain(|src, dst| src != dst);
 
     // Find cyclic groups
+    let mut rs = Vec::<Edge>::new(); // return value
     let mut vs = HashMap::<&PathBuf, i32>::new();
     let mut cycle = false;
     let mut i = 0;
@@ -55,6 +62,7 @@ pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
     for (_, mut dst) in &file_map {
         if let Some(&group_num) = vs.get(dst) {
             if group_num > 0 {
+                // Skip nodes that were already checked.
                 continue;
             }
         }
@@ -73,15 +81,55 @@ pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
             }
         }
 
+        let mut tmp: PathBuf = PathBuf::new();
         if cycle {
-            println!("Yah detected a cycle!");
-            let tmp = random_path(dst.parent().unwrap());
-            println!("Random tmp {:?}", tmp);
+            if let Some(path) = dst.parent() {
+                tmp = random_path(path);
+                rs.push(Edge {
+                    src: dst.to_owned(),
+                    dst: tmp.to_owned(),
+                });
+            }
+            // Breaks the cycle (in later loop).
+            //
+            // Basically decrements one of the nodes
+            // in the cycle so that `vs[src] == i`
+            // returns false after going through all
+            // the nodes in the cycle.
             *vs.get_mut(dst).unwrap() -= 1;
+        }
+
+        loop {
+            if let Some(src) = rev.get(dst) {
+                if !cycle || *vs.get(src).unwrap() == i {
+                    rs.push(Edge {
+                        src: src.to_owned(),
+                        dst: dst.to_owned(),
+                    });
+
+                    if !cycle {
+                        vs.insert(dst, i);
+                    }
+
+                    dst = src;
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        if cycle {
+            // Insert last edge
+            rs.push(Edge {
+                dst: dst.to_owned(),
+                src: tmp,
+            });
         }
     }
 
-    Ok(())
+    Ok(rs)
 }
 
 fn random_path(dir: &Path) -> PathBuf {
