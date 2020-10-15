@@ -1,5 +1,6 @@
 extern crate clap;
 
+mod filepath;
 mod ioutils;
 mod mmv;
 
