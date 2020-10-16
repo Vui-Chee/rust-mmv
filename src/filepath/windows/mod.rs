@@ -55,7 +55,7 @@ pub fn volume_name_len(path: &Path) -> usize {
     // UNC volume names looks something like "\\.*\.*".
     // Note '.' does not all characters but actually [^\.\\] - any character except
     // '.' or '\'.
-    let re = Regex::new(r"\\(\\[^\.\\]+){2}").unwrap();
+    let re = Regex::new(r"\\\\[^\.\\][^\\]*\\[^\.\\][^\\]+").unwrap();
     if let Ok(Some(matches)) = re.find(path_str) {
         return matches.end();
     }
@@ -81,6 +81,14 @@ fn unc_cases() {
     // Without trailing backslash
     let path = Path::new("\\\\first\\next");
     assert_eq!(volume_name_len(&path), 12);
+
+    // File with extensions
+    let path = Path::new("\\\\dir\\file.txt");
+    assert_eq!(volume_name_len(&path), 14);
+
+    // Directory with '.'
+    let path = Path::new("\\\\some.dir\\file");
+    assert_eq!(volume_name_len(&path), 15);
 }
 
 #[test]
@@ -95,5 +103,9 @@ fn no_volume_cases() {
     let path = Path::new("\\\\\\");
     assert_eq!(volume_name_len(&path), 0);
     let path = Path::new("\\\\.");
+    assert_eq!(volume_name_len(&path), 0);
+
+    // This case
+    let path = Path::new("\\abc\\");
     assert_eq!(volume_name_len(&path), 0);
 }
