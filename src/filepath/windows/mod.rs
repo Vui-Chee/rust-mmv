@@ -1,11 +1,9 @@
+use super::char_at;
+
 use fancy_regex::Regex;
 use std::path::Path;
 
 pub static PATH_SEPARATOR: char = '\\';
-
-fn char_at(bytes: &[u8], index: usize) -> char {
-    bytes[index] as char
-}
 
 // Windows uses backslashes for filesystem paths
 // and forward slash for everything else.
