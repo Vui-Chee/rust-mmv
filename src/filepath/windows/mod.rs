@@ -97,6 +97,8 @@ fn no_volume_cases() {
     // Relative paths (do not contain volumn prefixes)
     let path = Path::new(".\\temp.txt");
     assert_eq!(volume_name_len(&path), 0);
+    let path = Path::new("..\\Publications\\TravelBrochure.pdf");
+    assert_eq!(volume_name_len(&path), 0);
 
     // Other edge cases
     let path = Path::new("\\\\\\");
