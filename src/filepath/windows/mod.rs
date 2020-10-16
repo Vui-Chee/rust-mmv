@@ -27,22 +27,32 @@ pub fn volume_name_len(path: &Path) -> usize {
     }
 
     // Rust represents strings as UTF-8 internally.
-    // Only works if characters contain ASCII characters only.
+    //
+    // NOTE not all windows path characters are represented as UTF-8.
+    // See https://docs.racket-lang.org/reference/windowspaths.html
     let path_bytes = path_str.as_bytes();
     // Drive letter
     let c: char = char_at(path_bytes, 0);
+
+    // Check for volume names such as
+    // "C:\".
     if char_at(path_bytes, 1) == ':' || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') {
         return 2;
     }
 
-    // is it UNC? https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247(v=vs.85).aspx
+    // Get volume name length from UNC paths.
+    // See https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247(v=vs.85).aspx
+    //
+    // UNC paths begin with \\ (two slashes) but note in tests will "\\\\" for escape.
+    // The third position cannot be occupied with another '\' or '.'.
+    //
+    // UNC volume names looks something like "\\.*\.*".
     if path_str.len() >= 5
         && is_slash(c)
         && is_slash(char_at(path_bytes, 1))
         && !is_slash(char_at(path_bytes, 2))
         && char_at(path_bytes, 2) != '.'
     {
-        // first, leading `\\` and next shouldn't be `\`. its server name.
         for mut i in 3..path_str.len() - 1 {
             if is_slash(char_at(path_bytes, i)) {
                 i += 1;
@@ -52,7 +62,7 @@ pub fn volume_name_len(path: &Path) -> usize {
                     }
                     while i < path_str.len() {
                         if is_slash(char_at(path_bytes, i)) {
-                            return i;
+                            break;
                         }
                         i += 1;
                     }
@@ -67,10 +77,30 @@ pub fn volume_name_len(path: &Path) -> usize {
 }
 
 #[test]
-fn test_volume_name_len() {
-    let path = Path::new("C:\\");
+fn volume_cases() {
+    // Normal windows volume
+    let path = Path::new("C:");
     assert_eq!(volume_name_len(&path), 2);
-    // UNC begins with \\
+}
+
+#[test]
+fn unc_cases() {
+    // UNC test cases
     let path = Path::new("\\\\teela\\admin");
     assert_eq!(volume_name_len(&path), 13);
+    let path = Path::new("\\\\?\\REL\\..\\\\..");
+    assert_eq!(volume_name_len(&path), 7);
+}
+
+#[test]
+fn no_volume_cases() {
+    // Relative paths (do not contain volumn prefixes)
+    let path = Path::new(".\\temp.txt");
+    assert_eq!(volume_name_len(&path), 0);
+
+    // Other edge cases
+    let path = Path::new("\\\\\\");
+    assert_eq!(volume_name_len(&path), 0);
+    let path = Path::new("\\\\.");
+    assert_eq!(volume_name_len(&path), 0);
 }
