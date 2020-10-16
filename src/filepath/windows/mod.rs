@@ -1,3 +1,4 @@
+use fancy_regex::Regex;
 use std::path::Path;
 
 pub static PATH_SEPARATOR: char = '\\';
@@ -52,29 +53,19 @@ pub fn volume_name_len(path: &Path) -> usize {
     // The third position cannot be occupied with another '\' or '.'.
     //
     // UNC volume names looks something like "\\.*\.*".
+    // Note '.' does not all characters but actually [^\.\\] - any character except
+    // '.' or '\'.
     if path_str.len() >= 5
         && is_slash(c)
         && is_slash(char_at(path_bytes, 1))
         && !is_slash(char_at(path_bytes, 2))
         && char_at(path_bytes, 2) != '.'
     {
-        for mut i in 3..path_str.len() - 1 {
-            if is_slash(char_at(path_bytes, i)) {
-                i += 1;
-                if !is_slash(char_at(path_bytes, i)) {
-                    if char_at(path_bytes, i) == '.' {
-                        break;
-                    }
-                    while i < path_str.len() {
-                        if is_slash(char_at(path_bytes, i)) {
-                            break;
-                        }
-                        i += 1;
-                    }
-                    return i;
-                }
-                break;
-            }
+        // Attempt to match \\.+\.+\
+        // Must match till terminating backslash.
+        let re = Regex::new(r"\\\\([^\.\\]+\\){2}").unwrap();
+        if let Ok(Some(matches)) = re.find(path_str) {
+            return matches.end() - 1;
         }
     }
 
@@ -91,7 +82,9 @@ fn volume_cases() {
 #[test]
 fn unc_cases() {
     // UNC test cases
-    let path = Path::new("\\\\teela\\admin");
+    let path = Path::new("\\\\teela");
+    assert_eq!(volume_name_len(&path), 0);
+    let path = Path::new("\\\\teela\\admin\\folder");
     assert_eq!(volume_name_len(&path), 13);
     let path = Path::new("\\\\?\\REL\\..\\\\..");
     assert_eq!(volume_name_len(&path), 7);
