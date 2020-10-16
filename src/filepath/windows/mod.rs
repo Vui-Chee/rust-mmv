@@ -55,18 +55,9 @@ pub fn volume_name_len(path: &Path) -> usize {
     // UNC volume names looks something like "\\.*\.*".
     // Note '.' does not all characters but actually [^\.\\] - any character except
     // '.' or '\'.
-    if path_str.len() >= 5
-        && is_slash(c)
-        && is_slash(char_at(path_bytes, 1))
-        && !is_slash(char_at(path_bytes, 2))
-        && char_at(path_bytes, 2) != '.'
-    {
-        // Attempt to match \\.+\.+\
-        // Must match till terminating backslash.
-        let re = Regex::new(r"\\\\([^\.\\]+\\){2}").unwrap();
-        if let Ok(Some(matches)) = re.find(path_str) {
-            return matches.end() - 1;
-        }
+    let re = Regex::new(r"\\(\\[^\.\\]+){2}").unwrap();
+    if let Ok(Some(matches)) = re.find(path_str) {
+        return matches.end();
     }
 
     0
@@ -74,20 +65,22 @@ pub fn volume_name_len(path: &Path) -> usize {
 
 #[test]
 fn volume_cases() {
-    // Normal windows volume
     let path = Path::new("C:");
     assert_eq!(volume_name_len(&path), 2);
 }
 
 #[test]
 fn unc_cases() {
-    // UNC test cases
-    let path = Path::new("\\\\teela");
+    let path = Path::new("\\\\teela\\");
     assert_eq!(volume_name_len(&path), 0);
     let path = Path::new("\\\\teela\\admin\\folder");
     assert_eq!(volume_name_len(&path), 13);
     let path = Path::new("\\\\?\\REL\\..\\\\..");
     assert_eq!(volume_name_len(&path), 7);
+
+    // Without trailing backslash
+    let path = Path::new("\\\\first\\next");
+    assert_eq!(volume_name_len(&path), 12);
 }
 
 #[test]
