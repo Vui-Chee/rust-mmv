@@ -1,6 +1,5 @@
-use super::char_at;
-
 use fancy_regex::Regex;
+
 use std::path::Path;
 
 pub static PATH_SEPARATOR: char = '\\';
@@ -26,21 +25,22 @@ pub fn volume_name_len(path: &Path) -> usize {
         None => "",
     };
 
-    if path_str.len() < 2 {
+    // Rust represents strings as UTF-8 internally.
+    //
+    // NOTE not all path characters may be represented as UTF-8.
+    // See https://docs.racket-lang.org/reference/windowspaths.html
+    let path_vec = path_str.chars().collect::<Vec<char>>();
+
+    if path_vec.len() < 2 {
         return 0;
     }
 
-    // Rust represents strings as UTF-8 internally.
-    //
-    // NOTE not all windows path characters are represented as UTF-8.
-    // See https://docs.racket-lang.org/reference/windowspaths.html
-    let path_bytes = path_str.as_bytes();
     // Drive letter
-    let c: char = char_at(path_bytes, 0);
+    let c: char = path_vec[0];
 
     // Check for volume names such as
     // "C:\".
-    if char_at(path_bytes, 1) == ':' || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') {
+    if path_vec[0] == ':' || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') {
         return 2;
     }
 
@@ -55,10 +55,21 @@ pub fn volume_name_len(path: &Path) -> usize {
     // '.' or '\'.
     let re = Regex::new(r"\\\\[^\.\\][^\\]*\\[^\.\\][^\\]+").unwrap();
     if let Ok(Some(matches)) = re.find(path_str) {
-        return matches.end();
+        return path_str[0..matches.end()]
+            .chars()
+            .collect::<Vec<char>>()
+            .len();
     }
 
     0
+}
+
+#[test]
+fn non_utf_8() {
+    // This number of bytes in this string
+    // is longer than the number of characters.
+    let path = Path::new("\\\\ふー\\バー");
+    assert_eq!(volume_name_len(&path), 7);
 }
 
 #[test]
