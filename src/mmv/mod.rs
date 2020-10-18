@@ -17,8 +17,6 @@ pub fn rename(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
         Ok(renames) => {
             for (i, rename) in renames.iter().enumerate() {
                 if let Err(err) = do_rename(rename.src.as_path(), rename.dst.as_path()) {
-                    // Undo on error not to leave the temporary files.
-                    // This does not undo directory creation.
                     eprintln!("{}", err.to_string());
 
                     // Only undo if there is more than 1 previous renames.
@@ -26,6 +24,8 @@ pub fn rename(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
                     if i >= 1 {
                         let mut j = i - 1;
                         loop {
+                            // Undo on error not to leave the temporary files.
+                            // This does not undo directory creation.
                             if let Err(_err) =
                                 fs::rename(renames[j].dst.as_path(), renames[j].src.as_path())
                             {
