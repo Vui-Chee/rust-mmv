@@ -115,7 +115,7 @@ pub fn run(files: Values) -> Result<(), String> {
         .for_each(|(dst, src)| {
             src_to_dst_map.insert(PathBuf::from(src), PathBuf::from(dst));
         });
-    mmv::rename(src_to_dst_map);
+    mmv::rename(src_to_dst_map)?;
 
     Ok(())
 }
