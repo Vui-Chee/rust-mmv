@@ -65,56 +65,28 @@ pub fn volume_name_len(path: &Path) -> usize {
 }
 
 #[test]
-fn non_utf_8() {
-    // This number of bytes in this string
-    // is longer than the number of characters.
-    let path = Path::new("\\\\ふー\\バー");
-    assert_eq!(volume_name_len(&path), 7);
-}
+fn test_volume_name_len() {
+    let paths = [
+        // non utf-8
+        ("\\\\ふー\\バー", 7),
+        // volumes
+        ("C:", 2),
+        // UNC cases
+        ("\\\\teela\\", 0),
+        ("\\\\teela\\admin\\folder", 13),
+        ("\\\\?\\REL\\..\\\\..", 7),
+        ("\\\\first\\next", 12),
+        ("\\\\dir\\file.txt", 14),
+        ("\\\\some.dir\\file", 15),
+        // No volume cases
+        (".\\temp.txt", 0),
+        ("..\\Publications\\TravelBrochure.pdf", 0),
+        ("\\\\\\", 0),
+        ("\\\\.", 0),
+        ("\\abc\\", 0),
+    ];
 
-#[test]
-fn volume_cases() {
-    let path = Path::new("C:");
-    assert_eq!(volume_name_len(&path), 2);
-}
-
-#[test]
-fn unc_cases() {
-    let path = Path::new("\\\\teela\\");
-    assert_eq!(volume_name_len(&path), 0);
-    let path = Path::new("\\\\teela\\admin\\folder");
-    assert_eq!(volume_name_len(&path), 13);
-    let path = Path::new("\\\\?\\REL\\..\\\\..");
-    assert_eq!(volume_name_len(&path), 7);
-
-    // Without trailing backslash
-    let path = Path::new("\\\\first\\next");
-    assert_eq!(volume_name_len(&path), 12);
-
-    // File with extensions
-    let path = Path::new("\\\\dir\\file.txt");
-    assert_eq!(volume_name_len(&path), 14);
-
-    // Directory with '.'
-    let path = Path::new("\\\\some.dir\\file");
-    assert_eq!(volume_name_len(&path), 15);
-}
-
-#[test]
-fn no_volume_cases() {
-    // Relative paths (do not contain volumn prefixes)
-    let path = Path::new(".\\temp.txt");
-    assert_eq!(volume_name_len(&path), 0);
-    let path = Path::new("..\\Publications\\TravelBrochure.pdf");
-    assert_eq!(volume_name_len(&path), 0);
-
-    // Other edge cases
-    let path = Path::new("\\\\\\");
-    assert_eq!(volume_name_len(&path), 0);
-    let path = Path::new("\\\\.");
-    assert_eq!(volume_name_len(&path), 0);
-
-    // This case
-    let path = Path::new("\\abc\\");
-    assert_eq!(volume_name_len(&path), 0);
+    for (path, expected_len) in paths.iter() {
+        assert_eq!(volume_name_len(Path::new(path)), *expected_len as usize);
+    }
 }
