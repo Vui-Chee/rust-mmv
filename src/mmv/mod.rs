@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use super::filepath::clean;
 use super::ioutils::next_random;
 
 #[derive(Debug)]
@@ -12,11 +13,21 @@ pub struct Edge {
 
 pub fn rename(files: HashMap<PathBuf, PathBuf>) {
     match build_renames(files) {
-        Ok(_renames) => (),
+        Ok(renames) => println!("{:?}", renames),
         Err(msg) => eprintln!("{}", msg),
     };
 }
 
+/// Returns a vector of edges which represents the movement from
+/// source to destination file/dir location.
+///
+/// It does so by detecting cycles (Eg. A -> B -> C -> A) and adding
+/// an additional node (called tmp for example) to form this new graph,
+/// A -> B -> C -> tmp -> A.
+///
+/// So when adding back the edges to the output vector, the edges are pushed
+/// in reverse so that the files can be `moved` without overriding the contents
+/// of other files.
 pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<Vec<Edge>, String> {
     // Represents the reverse of files - where all edges are reversed.
     // Eg. A -> B becomes B -> A
@@ -29,24 +40,19 @@ pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<Vec<Edge>, Stri
     // Raise error if src/dst are repeated.
     // Also construct file_map and rev along on the way.
     for (src, dst) in files {
-        if let Ok(expanded_src) = src.canonicalize() {
-            if file_map.contains_key(&expanded_src) {
-                return Err(format!("Duplicate source {:?}", src));
-            }
+        let cleaned_src = clean(src.as_path());
+        let cleaned_dst = clean(dst.as_path());
 
-            if let Ok(expanded_dst) = dst.canonicalize() {
-                if rev.contains_key(&expanded_dst) {
-                    return Err(format!("Duplicate destination {:?}", dst));
-                }
-
-                file_map.insert(expanded_src.clone(), expanded_dst.clone());
-                rev.insert(expanded_dst, expanded_src);
-            } else {
-                return Err(format!("No such file/directory {:?}", dst));
-            }
-        } else {
-            return Err(format!("No such file/directory {:?}", src));
+        if file_map.contains_key(&cleaned_src) {
+            return Err(format!("Duplicate source {:?}", src));
         }
+
+        if rev.contains_key(&cleaned_dst) {
+            return Err(format!("Duplicate destination {:?}", dst));
+        }
+
+        file_map.insert(cleaned_src.clone(), cleaned_dst.clone());
+        rev.insert(cleaned_dst, cleaned_src);
     }
 
     // Remove redundant mappings from both HashMap.
