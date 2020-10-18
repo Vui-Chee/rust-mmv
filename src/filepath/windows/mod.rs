@@ -4,15 +4,6 @@ use std::path::Path;
 
 pub static PATH_SEPARATOR: char = '\\';
 
-// Windows uses backslashes for filesystem paths
-// and forward slash for everything else.
-//
-// But for this use case, I am only interested in
-// backslashes.
-fn is_slash(c: char) -> bool {
-    c == '\\'
-}
-
 pub fn is_path_separator(c: char) -> bool {
     c == PATH_SEPARATOR
 }
