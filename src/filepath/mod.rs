@@ -12,6 +12,9 @@
 //!
 //! This is a simplified smaller version of filepath
 //! module used in Golang.
+//!
+//! To see actual golang implentation, please visit
+//! https://golang.org/src/path/filepath/path.go?h=path.
 
 mod linux;
 mod unix;
