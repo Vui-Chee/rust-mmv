@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 
 use super::filepath::clean;
@@ -11,11 +12,53 @@ pub struct Edge {
     pub dst: PathBuf,
 }
 
-pub fn rename(files: HashMap<PathBuf, PathBuf>) {
+pub fn rename(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
     match build_renames(files) {
-        Ok(renames) => println!("{:?}", renames),
-        Err(msg) => eprintln!("{}", msg),
-    };
+        Ok(renames) => {
+            for (i, rename) in renames.iter().enumerate() {
+                println!("{}, {:?}", i, rename);
+                if let Err(err) = do_rename(rename.src.as_path(), rename.dst.as_path()) {
+                    eprintln!("{}", err.to_string());
+                }
+            }
+
+            Ok(())
+        }
+        Err(err) => {
+            eprintln!("{}", err);
+            Err(err.to_string())
+        }
+    }
+}
+
+pub fn do_rename(src: &Path, dst: &Path) -> Result<(), io::Error> {
+    // rename() raises io error iff:
+    // 1. src does not exist in fs
+    // 2. dst directory does not exist in fs
+    match fs::rename(src, dst) {
+        Ok(_res) => Ok(()), // successful rename, do nothing else
+        Err(_err) => {
+            // src does not exist in fs.
+            if let Err(err) = fs::metadata(src) {
+                return Err(err);
+            }
+
+            // dst directory does not exist.
+            if let Some(parent) = dst.parent() {
+                // Use create_dir_all() to recursively construct all parent
+                // directories if they do not exist.
+                //
+                // Eg. parent(abc/def/ghi) -> abc/def
+                // So directories abc & def are created.
+                if let Err(err) = fs::create_dir_all(parent) {
+                    return Err(err);
+                }
+            }
+
+            // Try renaming again after creating directorie(s).
+            fs::rename(src, dst)
+        }
+    }
 }
 
 /// Returns a vector of edges which represents the movement from
