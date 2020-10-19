@@ -44,10 +44,7 @@ pub fn rename(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
 
             Ok(())
         }
-        Err(err) => {
-            eprintln!("{}", err);
-            Err(err.to_string())
-        }
+        Err(err) => Err(err.to_string()),
     }
 }
 
