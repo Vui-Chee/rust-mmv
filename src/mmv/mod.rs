@@ -51,7 +51,7 @@ pub fn rename(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
     }
 }
 
-pub fn do_rename(src: &Path, dst: &Path) -> Result<(), io::Error> {
+fn do_rename(src: &Path, dst: &Path) -> Result<(), io::Error> {
     // rename() raises io error iff:
     // 1. src does not exist in fs
     // 2. dst directory does not exist in fs
@@ -91,7 +91,7 @@ pub fn do_rename(src: &Path, dst: &Path) -> Result<(), io::Error> {
 /// So when adding back the edges to the output vector, the edges are pushed
 /// in reverse so that the files can be `moved` without overriding the contents
 /// of other files.
-pub fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<Vec<Edge>, String> {
+fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<Vec<Edge>, String> {
     // Represents the reverse of files - where all edges are reversed.
     // Eg. A -> B becomes B -> A
     let mut rev = HashMap::<PathBuf, PathBuf>::new();
