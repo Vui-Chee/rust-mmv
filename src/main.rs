@@ -34,7 +34,11 @@ fn main() -> Result<(), String> {
         .get_matches();
 
     let file_inputs: Option<Values> = matches.values_of(file_args.get_name());
-    if let Some(files) = file_inputs {
+    if let Some(file_values) = file_inputs {
+        // Values is an iterator and will be consumed immediately
+        // in any loop. So create a vector of paths for multiple
+        // borrows.
+        let files = file_values.into_iter().collect::<Vec<&str>>();
         run(files).unwrap_or_else(|msg| {
             eprintln!("{}", msg);
         });
@@ -43,12 +47,14 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-pub fn run(files: Values) -> Result<(), String> {
+pub fn run(files: Vec<&str>) -> Result<(), String> {
     // Check for duplicate paths
-    let original_len = files.len();
-    let unique_paths: HashSet<_> = files.collect();
-    if unique_paths.len() != original_len {
-        return Err(String::from("Duplicate source(s)"));
+    let mut check_paths = HashSet::<&str>::new();
+    for file in &files {
+        let res = check_paths.insert(file);
+        if !res {
+            return Err(format!("Duplicate source {}", file));
+        }
     }
 
     // Create temporary file
@@ -58,7 +64,7 @@ pub fn run(files: Values) -> Result<(), String> {
     defer!(remove_file(&tmp_file_path).unwrap_or_else(|msg| {
         eprintln!("Error removing tmp file:\n{}", msg);
     }));
-    for path in &unique_paths {
+    for path in &files {
         let path_with_newline = format!("{}\n", path);
         tmp.write(path_with_newline.as_bytes()).unwrap();
     }
@@ -105,13 +111,13 @@ pub fn run(files: Values) -> Result<(), String> {
         .collect();
 
     // Raise error when user add/deletes a line from tmp file.
-    if edited_lines.len() != unique_paths.len() {
+    if edited_lines.len() != files.len() {
         return Err(String::from("Do not add or delete lines."));
     }
 
     edited_lines
         .iter()
-        .zip(unique_paths.iter())
+        .zip(files.into_iter())
         .for_each(|(dst, src)| {
             src_to_dst_map.insert(PathBuf::from(src), PathBuf::from(dst));
         });
