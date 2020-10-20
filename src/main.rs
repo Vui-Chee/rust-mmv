@@ -33,7 +33,6 @@ fn main() -> Result<(), String> {
         .arg(&file_args)
         .get_matches();
 
-    // Remove tmp file after run().
     let file_inputs: Option<Values> = matches.values_of(file_args.get_name());
     if let Some(files) = file_inputs {
         run(files).unwrap_or_else(|msg| {
@@ -55,6 +54,7 @@ pub fn run(files: Values) -> Result<(), String> {
     // Create temporary file
     let tmp_filename_prefix = format!("{}{}", APP_NAME, "-");
     let (mut tmp, tmp_file_path) = ioutils::temp_file("", &tmp_filename_prefix).unwrap();
+    // Remove tmp file after run().
     defer!(remove_file(&tmp_file_path).unwrap_or_else(|msg| {
         eprintln!("Error removing tmp file:\n{}", msg);
     }));
