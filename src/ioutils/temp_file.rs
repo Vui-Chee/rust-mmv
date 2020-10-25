@@ -6,8 +6,7 @@
 //! 9-digit suffix.
 
 use std::env;
-use std::fs::File;
-use std::fs::OpenOptions;
+use std::fs::{create_dir, File, OpenOptions};
 use std::io::{Error, ErrorKind, Result};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
@@ -94,4 +93,56 @@ pub fn temp_file(dirname: &str, pattern: &str) -> Result<(File, String)> {
 
     // raise IO error
     Err(Error::new(ErrorKind::Other, "Failed to create temp file"))
+}
+
+pub fn temp_dir(dirname: &str, pattern: &str) -> Result<String> {
+    let mut dir = PathBuf::from(dirname);
+    if dirname.len() == 0 {
+        dir = env::temp_dir();
+    }
+
+    let mut n_conflict = 0;
+    for _i in 1..10000 {
+        let rnd_dirname = format!("{}{}", pattern, next_random());
+        let mut dirpath = dir.clone();
+        dirpath.push(rnd_dirname);
+        // Failed to create directory.
+        if let Err(err) = create_dir(&dirpath) {
+            if err.kind() == ErrorKind::AlreadyExists {
+                n_conflict += 1;
+                if n_conflict > 10 {
+                    let mut rand = RAND.lock().unwrap();
+                    *rand = reseed();
+                    // Once out of this scope, lock should be released.
+                }
+                continue;
+            }
+        }
+
+        // Success directory created, create_dir() returns ().
+        // Return string path for temporary directory.
+        return Ok(String::from(dirpath.to_str().unwrap()));
+    }
+
+    Err(Error::new(
+        ErrorKind::Other,
+        "Failed to create temp directory",
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::temp_dir;
+    use std::fs;
+
+    #[test]
+    fn create_temp_dir() {
+        let result = temp_dir("", "mmv-");
+        assert!(result.is_ok());
+        let dirpath = result.unwrap();
+        // Check directory exists.
+        assert!(fs::canonicalize(&dirpath).is_ok());
+        // Clean up
+        assert!(fs::remove_dir(dirpath).is_ok());
+    }
 }
