@@ -116,6 +116,8 @@ pub fn temp_dir(dirname: &str, pattern: &str) -> Result<String> {
                     // Once out of this scope, lock should be released.
                 }
                 continue;
+            } else {
+                break; // Go to return error
             }
         }
 
