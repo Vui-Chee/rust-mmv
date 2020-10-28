@@ -208,3 +208,47 @@ fn random_path(dir: &Path) -> PathBuf {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    // use std::env;
+    use std::hash::Hash;
+    use std::path::PathBuf;
+
+    type CaseInput<'a> = &'a [(&'a str, &'a str)];
+
+    fn to_map<'a, K, V>(items: CaseInput<'a>) -> HashMap<K, V>
+    where
+        K: Eq + Hash + From<&'a str>,
+        V: From<&'a str>,
+    {
+        items
+            .iter()
+            .map(|&(key, value)| (key.into(), value.into()))
+            .collect()
+    }
+
+    struct TestCase {
+        name: String,
+        files: HashMap<PathBuf, PathBuf>,
+        // contents: HashMap<PathBuf, String>,
+        // expected: HashMap<PathBuf, String>,
+        count: u32,
+    }
+
+    impl TestCase {
+        pub fn new(name: &str, count: u32, files: CaseInput) -> Self {
+            TestCase {
+                name: String::from(name),
+                files: to_map::<PathBuf, PathBuf>(files),
+                count,
+            }
+        }
+    }
+
+    #[test]
+    fn one_file() {
+        let tc = TestCase::new("one file", 1, &[("foo", "bar")]);
+    }
+}
