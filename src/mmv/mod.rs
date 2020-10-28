@@ -213,6 +213,7 @@ fn random_path(dir: &Path) -> PathBuf {
 mod tests {
     use std::collections::HashMap;
     // use std::env;
+    use super::super::ioutils::temp_dir;
     use std::hash::Hash;
     use std::path::PathBuf;
 
@@ -232,23 +233,37 @@ mod tests {
     struct TestCase {
         name: String,
         files: HashMap<PathBuf, PathBuf>,
-        // contents: HashMap<PathBuf, String>,
-        // expected: HashMap<PathBuf, String>,
+        contents: HashMap<PathBuf, String>,
+        expected: HashMap<PathBuf, String>,
         count: u32,
     }
 
     impl TestCase {
-        pub fn new(name: &str, count: u32, files: CaseInput) -> Self {
+        pub fn new(
+            name: &str,
+            count: u32,
+            files: CaseInput,
+            contents: CaseInput,
+            expected: CaseInput,
+        ) -> Self {
             TestCase {
                 name: String::from(name),
-                files: to_map::<PathBuf, PathBuf>(files),
                 count,
+                files: to_map::<PathBuf, PathBuf>(files),
+                contents: to_map::<PathBuf, String>(contents),
+                expected: to_map::<PathBuf, String>(expected),
             }
         }
     }
 
     #[test]
     fn one_file() {
-        let tc = TestCase::new("one file", 1, &[("foo", "bar")]);
+        let tc = TestCase::new(
+            "one file",
+            1,
+            &[("foo", "bar")],
+            &[("foo", "0")],
+            &[("bar", "0")],
+        );
     }
 }
