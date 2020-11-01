@@ -211,9 +211,10 @@ fn random_path(dir: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-    // use std::env;
+
     use super::super::ioutils::temp_dir;
+    use std::collections::HashMap;
+    use std::fs;
     use std::hash::Hash;
     use std::path::PathBuf;
 
@@ -231,11 +232,11 @@ mod tests {
     }
 
     struct TestCase {
-        name: String,
-        files: HashMap<PathBuf, PathBuf>,
-        contents: HashMap<PathBuf, String>,
-        expected: HashMap<PathBuf, String>,
-        count: u32,
+        pub name: String,
+        pub files: HashMap<PathBuf, PathBuf>,
+        pub contents: HashMap<PathBuf, String>,
+        pub expected: HashMap<PathBuf, String>,
+        pub count: u32,
     }
 
     impl TestCase {
@@ -258,12 +259,18 @@ mod tests {
 
     #[test]
     fn one_file() {
-        let tc = TestCase::new(
+        let _tc = TestCase::new(
             "one file",
             1,
             &[("foo", "bar")],
             &[("foo", "0")],
             &[("bar", "0")],
         );
+
+        let result = temp_dir("", "mmv-");
+        assert!(result.is_ok());
+        let dirname = result.unwrap();
+        // Remove temp dir.
+        assert!(fs::remove_dir(dirname).is_ok());
     }
 }
