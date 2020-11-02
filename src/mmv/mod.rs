@@ -214,6 +214,7 @@ mod tests {
 
     use super::super::ioutils::temp_dir;
     use std::collections::HashMap;
+    use std::env;
     use std::fs;
     use std::hash::Hash;
     use std::path::PathBuf;
@@ -269,8 +270,16 @@ mod tests {
 
         let result = temp_dir("", "mmv-");
         assert!(result.is_ok());
-        let dirname = result.unwrap();
+        // In macos, there is a symbolic link from /var to /private/var
+        let dirpath = format!("/private/{}", result.unwrap());
+
+        // Change current directory to temporary directory path.
+        assert!(env::set_current_dir(&dirpath).is_ok());
+        let curr_dir_res = env::current_dir();
+        assert!(curr_dir_res.is_ok());
+        assert!(curr_dir_res.unwrap() == PathBuf::from(&dirpath));
+
         // Remove temp dir.
-        assert!(fs::remove_dir(dirname).is_ok());
+        assert!(fs::remove_dir(dirpath).is_ok());
     }
 }
