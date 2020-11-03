@@ -217,6 +217,7 @@ mod tests {
     use std::env;
     use std::fs;
     use std::hash::Hash;
+    use std::io;
     use std::path::PathBuf;
 
     type CaseInput<'a> = &'a [(&'a str, &'a str)];
@@ -256,11 +257,19 @@ mod tests {
                 expected: to_map::<PathBuf, String>(expected),
             }
         }
+
+        pub fn setup(self) -> io::Result<()> {
+            for (file, content) in self.contents {
+                fs::write(file, content)?;
+            }
+
+            Ok(())
+        }
     }
 
     #[test]
     fn one_file() {
-        let _tc = TestCase::new(
+        let tc = TestCase::new(
             "one file",
             1,
             &[("foo", "bar")],
@@ -279,7 +288,10 @@ mod tests {
         assert!(curr_dir_res.is_ok());
         assert!(curr_dir_res.unwrap() == PathBuf::from(&dirpath));
 
+        // Write contents to each file
+        assert!(tc.setup().is_ok());
+
         // Remove temp dir.
-        assert!(fs::remove_dir(dirpath).is_ok());
+        assert!(fs::remove_dir_all(dirpath).is_ok());
     }
 }
