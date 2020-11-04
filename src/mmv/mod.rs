@@ -212,13 +212,16 @@ fn random_path(dir: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
 
-    use super::super::ioutils::temp_dir;
     use std::collections::HashMap;
     use std::env;
     use std::fs;
     use std::hash::Hash;
     use std::io;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
+
+    use super::super::filepath::clean;
+    use super::super::ioutils::temp_dir;
+    use super::build_renames;
 
     type CaseInput<'a> = &'a [(&'a str, &'a str)];
 
@@ -238,13 +241,13 @@ mod tests {
         pub files: HashMap<PathBuf, PathBuf>,
         pub contents: HashMap<PathBuf, String>,
         pub expected: HashMap<PathBuf, String>,
-        pub count: u32,
+        pub count: usize,
     }
 
     impl TestCase {
         pub fn new(
             name: &str,
-            count: u32,
+            count: usize,
             files: CaseInput,
             contents: CaseInput,
             expected: CaseInput,
@@ -258,12 +261,41 @@ mod tests {
             }
         }
 
-        pub fn setup(self) -> io::Result<()> {
-            for (file, content) in self.contents {
+        pub fn setup(&self) -> io::Result<()> {
+            for (file, content) in &self.contents {
                 fs::write(file, content)?;
             }
 
             Ok(())
+        }
+
+        pub fn file_contents(&self, dir: &str) -> io::Result<HashMap<PathBuf, String>> {
+            let mut output_map = HashMap::<PathBuf, String>::new();
+            for entry in fs::read_dir(dir)? {
+                let pathbuf = entry?.path();
+                if pathbuf.is_dir() {
+                    // Read all files in this directory
+                    let dirpath = Path::new(dir).join(pathbuf);
+                    let dirpath = dirpath.to_str().unwrap();
+                    for (path, contents) in &self.file_contents(dirpath)? {
+                        let cleaned_path = clean(path);
+                        output_map.insert(cleaned_path, contents.clone());
+                    }
+                } else {
+                    // Write file contents to output map
+                    let cleaned_pathbuf = clean(pathbuf.as_path());
+                    let read_result = fs::read(&cleaned_pathbuf);
+                    let contents = String::from_utf8(read_result?);
+                    if contents.is_ok() {
+                        output_map.insert(cleaned_pathbuf, contents.unwrap());
+                    } else {
+                        eprintln!("Failed to read contents from {:?}", cleaned_pathbuf);
+                        break;
+                    }
+                }
+            }
+
+            Ok(output_map)
         }
     }
 
@@ -290,6 +322,17 @@ mod tests {
 
         // Write contents to each file
         assert!(tc.setup().is_ok());
+
+        // Build renames
+        let result = build_renames(tc.files.clone());
+        assert!(result.is_ok());
+        let edges = result.unwrap();
+        assert!(edges.len() == tc.count);
+
+        // Read all file contents and check with expected result
+        if let Ok(got) = tc.file_contents(".") {
+            println!("{:?}", got);
+        }
 
         // Remove temp dir.
         assert!(fs::remove_dir_all(dirpath).is_ok());
