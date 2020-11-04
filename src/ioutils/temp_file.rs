@@ -95,6 +95,7 @@ pub fn temp_file(dirname: &str, pattern: &str) -> Result<(File, String)> {
     Err(Error::new(ErrorKind::Other, "Failed to create temp file"))
 }
 
+#[allow(dead_code)]
 pub fn temp_dir(dirname: &str, pattern: &str) -> Result<String> {
     let mut dir = PathBuf::from(dirname);
     if dirname.len() == 0 {
