@@ -12,7 +12,7 @@ pub struct Edge {
     pub dst: PathBuf,
 }
 
-pub fn rename(files: HashMap<PathBuf, PathBuf>) -> Result<(), String> {
+pub fn rename(files: &HashMap<PathBuf, PathBuf>) -> Result<(), String> {
     match build_renames(files) {
         Ok(renames) => {
             for (i, rename) in renames.iter().enumerate() {
@@ -88,7 +88,7 @@ fn do_rename(src: &Path, dst: &Path) -> Result<(), io::Error> {
 /// So when adding back the edges to the output vector, the edges are pushed
 /// in reverse so that the files can be `moved` without overriding the contents
 /// of other files.
-fn build_renames(files: HashMap<PathBuf, PathBuf>) -> Result<Vec<Edge>, String> {
+fn build_renames(files: &HashMap<PathBuf, PathBuf>) -> Result<Vec<Edge>, String> {
     // Represents the reverse of files - where all edges are reversed.
     // Eg. A -> B becomes B -> A
     let mut rev = HashMap::<PathBuf, PathBuf>::new();
@@ -217,11 +217,11 @@ mod tests {
     use std::fs;
     use std::hash::Hash;
     use std::io;
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
 
     use super::super::filepath::clean;
     use super::super::ioutils::temp_dir;
-    use super::build_renames;
+    use super::{build_renames, rename};
 
     type CaseInput<'a> = &'a [(&'a str, &'a str)];
 
@@ -272,12 +272,12 @@ mod tests {
         pub fn file_contents(&self, dir: &str) -> io::Result<HashMap<PathBuf, String>> {
             let mut output_map = HashMap::<PathBuf, String>::new();
             for entry in fs::read_dir(dir)? {
-                let pathbuf = entry?.path();
+                let pathbuf = clean(entry?.path().as_path());
                 if pathbuf.is_dir() {
                     // Read all files in this directory
-                    let dirpath = Path::new(dir).join(pathbuf);
-                    let dirpath = dirpath.to_str().unwrap();
-                    for (path, contents) in &self.file_contents(dirpath)? {
+                    for (path, contents) in
+                        &self.file_contents(pathbuf.as_path().to_str().unwrap())?
+                    {
                         let cleaned_path = clean(path);
                         output_map.insert(cleaned_path, contents.clone());
                     }
@@ -309,32 +309,34 @@ mod tests {
             &[("bar", "0")],
         );
 
-        let result = temp_dir("", "mmv-");
-        assert!(result.is_ok());
-        // In macos, there is a symbolic link from /var to /private/var
-        let dirpath = format!("/private/{}", result.unwrap());
+        // Get fully resolved path to temporary folder.
+        // If no canoncalize, then will not resolve symbolic links.
+        let tmp_path = env::temp_dir().canonicalize().unwrap();
+        // Create another folder at that location
+        let dir_path = temp_dir(tmp_path.to_str().unwrap(), "mmv-").unwrap();
 
         // Change current directory to temporary directory path.
-        assert!(env::set_current_dir(&dirpath).is_ok());
-        let curr_dir_res = env::current_dir();
-        assert!(curr_dir_res.is_ok());
-        assert!(curr_dir_res.unwrap() == PathBuf::from(&dirpath));
+        assert!(env::set_current_dir(&dir_path).is_ok());
+        assert!(env::current_dir().unwrap() == PathBuf::from(&dir_path));
 
         // Write contents to each file
         assert!(tc.setup().is_ok());
 
         // Build renames
-        let result = build_renames(tc.files.clone());
-        assert!(result.is_ok());
-        let edges = result.unwrap();
+        let renames = build_renames(&tc.files);
+        assert!(renames.is_ok());
+        let edges = renames.unwrap();
         assert!(edges.len() == tc.count);
 
-        // Read all file contents and check with expected result
-        if let Ok(got) = tc.file_contents(".") {
-            println!("{:?}", got);
-        }
+        // Rename files
+        assert!(rename(&tc.files).is_ok());
+
+        // Read all file contents inside dir_path and check with expected result.
+        let got = tc.file_contents(".");
+        assert!(got.is_ok());
+        assert!(got.unwrap() == tc.expected);
 
         // Remove temp dir.
-        assert!(fs::remove_dir_all(dirpath).is_ok());
+        assert!(fs::remove_dir_all(dir_path).is_ok());
     }
 }
