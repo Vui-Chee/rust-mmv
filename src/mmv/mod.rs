@@ -343,4 +343,53 @@ mod tests {
         )
         .check();
     }
+
+    #[test]
+    fn swap_two_files() {
+        TestCase::new(
+            3,
+            &[("foo", "bar"), ("bar", "foo")],
+            &[("foo", "0"), ("bar", "1"), ("baz", "2")],
+            &[("bar", "0"), ("foo", "1"), ("baz", "2")],
+        )
+        .check();
+    }
+
+    #[test]
+    fn two_swaps() {
+        TestCase::new(
+            6,
+            &[
+                ("foo", "bar"),
+                ("bar", "foo"),
+                ("baz", "qux"),
+                ("qux", "baz"),
+            ],
+            &[("foo", "0"), ("bar", "1"), ("baz", "2"), ("qux", "3")],
+            &[("bar", "0"), ("foo", "1"), ("baz", "3"), ("qux", "2")],
+        )
+        .check();
+    }
+
+    #[test]
+    fn three_files() {
+        TestCase::new(
+            3,
+            &[("foo", "bar"), ("bar", "baz"), ("baz", "qux")],
+            &[("foo", "0"), ("bar", "1"), ("baz", "2")],
+            &[("bar", "0"), ("baz", "1"), ("qux", "2")],
+        )
+        .check();
+    }
+
+    #[test]
+    fn cycle_three_files() {
+        TestCase::new(
+            4,
+            &[("foo", "bar"), ("bar", "baz"), ("baz", "foo")],
+            &[("foo", "0"), ("bar", "1"), ("baz", "2")],
+            &[("bar", "0"), ("baz", "1"), ("foo", "2")],
+        )
+        .check();
+    }
 }
