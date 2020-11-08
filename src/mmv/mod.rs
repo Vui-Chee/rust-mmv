@@ -237,7 +237,6 @@ mod tests {
     }
 
     struct TestCase {
-        pub name: String,
         pub files: HashMap<PathBuf, PathBuf>,
         pub contents: HashMap<PathBuf, String>,
         pub expected: HashMap<PathBuf, String>,
@@ -246,14 +245,12 @@ mod tests {
 
     impl TestCase {
         pub fn new(
-            name: &str,
             count: usize,
             files: CaseInput,
             contents: CaseInput,
             expected: CaseInput,
         ) -> Self {
             TestCase {
-                name: String::from(name),
                 count,
                 files: to_map::<PathBuf, PathBuf>(files),
                 contents: to_map::<PathBuf, String>(contents),
@@ -297,46 +294,42 @@ mod tests {
 
             Ok(output_map)
         }
+
+        pub fn check(&self) {
+            // Get fully resolved path to temporary folder.
+            // If no canoncalize, then will not resolve symbolic links.
+            let tmp_path = env::temp_dir().canonicalize().unwrap();
+            // Create another folder at that location
+            let dir_path = temp_dir(tmp_path.to_str().unwrap(), "mmv-").unwrap();
+
+            // Change current directory to temporary directory path.
+            assert!(env::set_current_dir(&dir_path).is_ok());
+            assert!(env::current_dir().unwrap() == PathBuf::from(&dir_path));
+
+            // Write contents to each file
+            assert!(self.setup().is_ok());
+
+            // Build renames
+            let renames = build_renames(&self.files);
+            assert!(renames.is_ok());
+            let edges = renames.unwrap();
+            assert!(edges.len() == self.count);
+
+            // Rename files
+            assert!(rename(&self.files).is_ok());
+
+            // Read all file contents inside dir_path and check with expected result.
+            let got = self.file_contents(".");
+            assert!(got.is_ok());
+            assert!(got.unwrap() == self.expected);
+
+            // Remove temp dir.
+            assert!(fs::remove_dir_all(dir_path).is_ok());
+        }
     }
 
     #[test]
     fn one_file() {
-        let tc = TestCase::new(
-            "one file",
-            1,
-            &[("foo", "bar")],
-            &[("foo", "0")],
-            &[("bar", "0")],
-        );
-
-        // Get fully resolved path to temporary folder.
-        // If no canoncalize, then will not resolve symbolic links.
-        let tmp_path = env::temp_dir().canonicalize().unwrap();
-        // Create another folder at that location
-        let dir_path = temp_dir(tmp_path.to_str().unwrap(), "mmv-").unwrap();
-
-        // Change current directory to temporary directory path.
-        assert!(env::set_current_dir(&dir_path).is_ok());
-        assert!(env::current_dir().unwrap() == PathBuf::from(&dir_path));
-
-        // Write contents to each file
-        assert!(tc.setup().is_ok());
-
-        // Build renames
-        let renames = build_renames(&tc.files);
-        assert!(renames.is_ok());
-        let edges = renames.unwrap();
-        assert!(edges.len() == tc.count);
-
-        // Rename files
-        assert!(rename(&tc.files).is_ok());
-
-        // Read all file contents inside dir_path and check with expected result.
-        let got = tc.file_contents(".");
-        assert!(got.is_ok());
-        assert!(got.unwrap() == tc.expected);
-
-        // Remove temp dir.
-        assert!(fs::remove_dir_all(dir_path).is_ok());
+        TestCase::new(1, &[("foo", "bar")], &[("foo", "0")], &[("bar", "0")]).check();
     }
 }
