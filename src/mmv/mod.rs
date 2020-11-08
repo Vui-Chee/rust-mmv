@@ -332,4 +332,15 @@ mod tests {
     fn one_file() {
         TestCase::new(1, &[("foo", "bar")], &[("foo", "0")], &[("bar", "0")]).check();
     }
+
+    #[test]
+    fn two_files() {
+        TestCase::new(
+            2,
+            &[("foo", "qux"), ("bar", "quux")],
+            &[("foo", "0"), ("bar", "1"), ("baz", "2")],
+            &[("qux", "0"), ("quux", "1"), ("baz", "2")],
+        )
+        .check();
+    }
 }
