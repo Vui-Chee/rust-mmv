@@ -447,4 +447,16 @@ mod tests {
         )
         .check();
     }
+
+    #[test]
+    fn clean_source_path() {
+        TestCase::new(
+            3,
+            &[("foo", "bar"), ("bar/", "foo/")],
+            &[("foo", "0"), ("bar", "1")],
+            &[("foo", "1"), ("bar", "0")],
+            None,
+        )
+        .check();
+    }
 }
