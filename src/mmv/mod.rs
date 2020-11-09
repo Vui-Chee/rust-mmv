@@ -236,21 +236,21 @@ mod tests {
             .collect()
     }
 
-    struct TestCase {
+    struct TestCase<'a> {
         pub files: HashMap<PathBuf, PathBuf>,
         pub contents: HashMap<PathBuf, String>,
         pub expected: HashMap<PathBuf, String>,
         pub count: usize,
-        pub err: Option<String>,
+        pub err: Option<&'a str>,
     }
 
-    impl TestCase {
+    impl<'a> TestCase<'a> {
         pub fn new(
             count: usize,
             files: CaseInput,
             contents: CaseInput,
             expected: CaseInput,
-            err: Option<String>,
+            err: Option<&'a str>,
         ) -> Self {
             TestCase {
                 count,
