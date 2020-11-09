@@ -241,6 +241,7 @@ mod tests {
         pub contents: HashMap<PathBuf, String>,
         pub expected: HashMap<PathBuf, String>,
         pub count: usize,
+        pub err: Option<String>,
     }
 
     impl TestCase {
@@ -249,12 +250,14 @@ mod tests {
             files: CaseInput,
             contents: CaseInput,
             expected: CaseInput,
+            err: Option<String>,
         ) -> Self {
             TestCase {
                 count,
                 files: to_map::<PathBuf, PathBuf>(files),
                 contents: to_map::<PathBuf, String>(contents),
                 expected: to_map::<PathBuf, String>(expected),
+                err,
             }
         }
 
@@ -330,7 +333,7 @@ mod tests {
 
     #[test]
     fn one_file() {
-        TestCase::new(1, &[("foo", "bar")], &[("foo", "0")], &[("bar", "0")]).check();
+        TestCase::new(1, &[("foo", "bar")], &[("foo", "0")], &[("bar", "0")], None).check();
     }
 
     #[test]
@@ -340,6 +343,7 @@ mod tests {
             &[("foo", "qux"), ("bar", "quux")],
             &[("foo", "0"), ("bar", "1"), ("baz", "2")],
             &[("qux", "0"), ("quux", "1"), ("baz", "2")],
+            None,
         )
         .check();
     }
@@ -351,6 +355,7 @@ mod tests {
             &[("foo", "bar"), ("bar", "foo")],
             &[("foo", "0"), ("bar", "1"), ("baz", "2")],
             &[("bar", "0"), ("foo", "1"), ("baz", "2")],
+            None,
         )
         .check();
     }
@@ -367,6 +372,7 @@ mod tests {
             ],
             &[("foo", "0"), ("bar", "1"), ("baz", "2"), ("qux", "3")],
             &[("bar", "0"), ("foo", "1"), ("baz", "3"), ("qux", "2")],
+            None,
         )
         .check();
     }
@@ -378,6 +384,7 @@ mod tests {
             &[("foo", "bar"), ("bar", "baz"), ("baz", "qux")],
             &[("foo", "0"), ("bar", "1"), ("baz", "2")],
             &[("bar", "0"), ("baz", "1"), ("qux", "2")],
+            None,
         )
         .check();
     }
@@ -389,6 +396,7 @@ mod tests {
             &[("foo", "bar"), ("bar", "baz"), ("baz", "foo")],
             &[("foo", "0"), ("bar", "1"), ("baz", "2")],
             &[("bar", "0"), ("baz", "1"), ("foo", "2")],
+            None,
         )
         .check();
     }
