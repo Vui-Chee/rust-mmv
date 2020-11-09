@@ -44,7 +44,7 @@ pub fn rename(files: &HashMap<PathBuf, PathBuf>) -> Result<(), String> {
 
             Ok(())
         }
-        Err(err) => Err(err.to_string()),
+        Err(err) => Err(err),
     }
 }
 
@@ -100,6 +100,10 @@ fn build_renames(files: &HashMap<PathBuf, PathBuf>) -> Result<Vec<Edge>, String>
     // Raise error if src/dst are repeated.
     // Also construct file_map and rev along on the way.
     for (src, dst) in files {
+        if src.to_str() == Some("") {
+            return Err(format!("src cannot be empty."));
+        }
+
         let cleaned_src = clean(src.as_path());
         let cleaned_dst = clean(dst.as_path());
 
@@ -314,12 +318,17 @@ mod tests {
 
             // Build renames
             let renames = build_renames(&self.files);
-            assert!(renames.is_ok());
-            let edges = renames.unwrap();
-            assert!(edges.len() == self.count);
+            if renames.is_ok() {
+                let edges = renames.unwrap();
+                assert!(edges.len() == self.count);
+            }
 
             // Rename files
-            assert!(rename(&self.files).is_ok());
+            if let Err(err) = rename(&self.files) {
+                if let Some(expected_err) = self.err {
+                    assert_eq!(err, expected_err.to_string());
+                }
+            }
 
             // Read all file contents inside dir_path and check with expected result.
             let got = self.file_contents(".");
@@ -397,6 +406,18 @@ mod tests {
             &[("foo", "0"), ("bar", "1"), ("baz", "2")],
             &[("bar", "0"), ("baz", "1"), ("foo", "2")],
             None,
+        )
+        .check();
+    }
+
+    #[test]
+    fn empty_source_path_error() {
+        TestCase::new(
+            0, // Does not matter
+            &[("foo", "baz"), ("", "baz")],
+            &[("foo", "0"), ("bar", "1")],
+            &[("foo", "0"), ("bar", "1")],
+            Some("src cannot be empty."),
         )
         .check();
     }
