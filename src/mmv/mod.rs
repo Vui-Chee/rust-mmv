@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use super::filepath::clean;
 use super::ioutils::next_random;
 
+static EMPTY_PATH_ERROR: &'static str = "Path cannot be empty.";
+
 #[derive(Debug)]
 pub struct Edge {
     pub src: PathBuf,
@@ -100,8 +102,8 @@ fn build_renames(files: &HashMap<PathBuf, PathBuf>) -> Result<Vec<Edge>, String>
     // Raise error if src/dst are repeated.
     // Also construct file_map and rev along on the way.
     for (src, dst) in files {
-        if src.to_str() == Some("") {
-            return Err(format!("src cannot be empty."));
+        if src.to_str() == Some("") || dst.to_str() == Some("") {
+            return Err(EMPTY_PATH_ERROR.to_string());
         }
 
         let cleaned_src = clean(src.as_path());
@@ -225,7 +227,7 @@ mod tests {
 
     use super::super::filepath::clean;
     use super::super::ioutils::temp_dir;
-    use super::{build_renames, rename};
+    use super::{build_renames, rename, EMPTY_PATH_ERROR};
 
     type CaseInput<'a> = &'a [(&'a str, &'a str)];
 
@@ -417,7 +419,19 @@ mod tests {
             &[("foo", "baz"), ("", "baz")],
             &[("foo", "0"), ("bar", "1")],
             &[("foo", "0"), ("bar", "1")],
-            Some("src cannot be empty."),
+            Some(EMPTY_PATH_ERROR),
+        )
+        .check();
+    }
+
+    #[test]
+    fn empty_destination_path_error() {
+        TestCase::new(
+            0, // Does not matter
+            &[("foo", "baz"), ("bar", "")],
+            &[("foo", "0"), ("bar", "1")],
+            &[("foo", "0"), ("bar", "1")],
+            Some(EMPTY_PATH_ERROR),
         )
         .check();
     }
