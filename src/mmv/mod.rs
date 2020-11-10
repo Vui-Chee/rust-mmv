@@ -110,11 +110,11 @@ fn build_renames(files: &HashMap<PathBuf, PathBuf>) -> Result<Vec<Edge>, String>
         let cleaned_dst = clean(dst.as_path());
 
         if file_map.contains_key(&cleaned_src) {
-            return Err(format!("Duplicate source {}", src.display()));
+            return Err(format!("Duplicate source {}", cleaned_src.display()));
         }
 
         if rev.contains_key(&cleaned_dst) {
-            return Err(format!("Duplicate destination {}", dst.display()));
+            return Err(format!("Duplicate destination {}", cleaned_dst.display()));
         }
 
         file_map.insert(cleaned_src.clone(), cleaned_dst.clone());
@@ -456,6 +456,18 @@ mod tests {
             &[("foo", "0"), ("bar", "1")],
             &[("foo", "1"), ("bar", "0")],
             None,
+        )
+        .check();
+    }
+
+    #[test]
+    fn clean_path_same_source() {
+        TestCase::new(
+            0, // No matter
+            &[("foo", "baz"), ("bar/../foo", "bar")],
+            &[("foo", "0"), ("bar", "1")],
+            &[("foo", "0"), ("bar", "1")],
+            Some("Duplicate source foo"),
         )
         .check();
     }
