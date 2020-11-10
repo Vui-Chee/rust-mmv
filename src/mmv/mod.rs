@@ -525,4 +525,16 @@ mod tests {
         )
         .check();
     }
+
+    #[test]
+    fn create_destination_directory() {
+        TestCase::new(
+            3,
+            &[("foo", "x/foo"), ("bar", "x/bar"), ("baz", "a/b/c/baz")],
+            &[("foo", "0"), ("bar", "1"), ("baz", "2")],
+            &[("x/foo", "0"), ("x/bar", "1"), ("a/b/c/baz", "2")],
+            None,
+        )
+        .check();
+    }
 }
