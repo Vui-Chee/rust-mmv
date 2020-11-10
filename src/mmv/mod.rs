@@ -471,4 +471,58 @@ mod tests {
         )
         .check();
     }
+
+    #[test]
+    fn clean_path_same_destination() {
+        TestCase::new(
+            0, // No matter
+            &[("foo", "baz"), ("bar", "foo/../baz")],
+            &[("foo", "0"), ("bar", "1")],
+            &[("foo", "0"), ("bar", "1")],
+            Some("Duplicate destination baz"),
+        )
+        .check();
+    }
+
+    #[test]
+    fn same_source_and_destination() {
+        TestCase::new(
+            0, // No matter
+            &[("foo/", "foo"), ("bar/", "bar")],
+            &[("foo", "0"), ("bar", "1")],
+            &[("foo", "0"), ("bar", "1")],
+            None,
+        )
+        .check();
+    }
+
+    #[test]
+    fn same_destination_with_error() {
+        TestCase::new(
+            0, // No matter
+            &[("foo/", "foo/"), ("bar/", "foo")],
+            &[("foo", "0"), ("bar", "1")],
+            &[("foo", "0"), ("bar", "1")],
+            Some("Duplicate destination foo"),
+        )
+        .check();
+    }
+
+    #[test]
+    fn undo_on_error() {
+        TestCase::new(
+            7,
+            &[
+                ("foo", "bar"),
+                ("bar", "foo"),
+                ("baz", "qux"),
+                ("qux", "quux"),
+                ("quux", "baz"),
+            ],
+            &[("foo", "0"), ("bar", "1"), ("baz", "2"), ("qux", "3")],
+            &[("foo", "0"), ("bar", "1"), ("baz", "2"), ("qux", "3")],
+            Some("quux"), // No such file or directory
+        )
+        .check();
+    }
 }
