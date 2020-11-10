@@ -19,8 +19,6 @@ pub fn rename(files: &HashMap<PathBuf, PathBuf>) -> Result<(), String> {
         Ok(renames) => {
             for (i, rename) in renames.iter().enumerate() {
                 if let Err(err) = do_rename(rename.src.as_path(), rename.dst.as_path()) {
-                    eprintln!("{}", err.to_string());
-
                     // Only undo if there is more than 1 previous renames.
                     // Otherwise, j - 1 yields an overflow error (since i is usize).
                     if i >= 1 {
@@ -41,6 +39,8 @@ pub fn rename(files: &HashMap<PathBuf, PathBuf>) -> Result<(), String> {
                             j -= 1;
                         }
                     }
+
+                    return Err(err.to_string());
                 }
             }
 
@@ -521,7 +521,7 @@ mod tests {
             ],
             &[("foo", "0"), ("bar", "1"), ("baz", "2"), ("qux", "3")],
             &[("foo", "0"), ("bar", "1"), ("baz", "2"), ("qux", "3")],
-            Some("quux"), // No such file or directory
+            Some("No such file or directory (os error 2)"), // No such file or directory
         )
         .check();
     }
