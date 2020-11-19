@@ -2,10 +2,8 @@ extern crate clap;
 
 mod filepath;
 mod ioutils;
-mod mmv;
-
 mod macros;
-use macros::*;
+mod mmv;
 
 // Default modules
 use std::collections::{HashMap, HashSet};
