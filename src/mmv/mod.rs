@@ -298,15 +298,11 @@ mod tests {
         pub fn file_contents(&self, dir: &str) -> io::Result<HashMap<PathBuf, String>> {
             let mut output_map = HashMap::<PathBuf, String>::new();
             for entry in fs::read_dir(dir)? {
-                let pathbuf = clean(entry?.path().as_path());
+                let pathbuf = entry?.path();
                 if pathbuf.is_dir() {
                     // Read all files in this directory
-                    for (path, contents) in
-                        &self.file_contents(pathbuf.as_path().to_str().unwrap())?
-                    {
-                        if let Some(cleaned_path) = clean(path).file_name() {
-                            output_map.insert(PathBuf::from(cleaned_path), contents.clone());
-                        }
+                    for (path, contents) in &self.file_contents(pathbuf.to_str().unwrap())? {
+                        output_map.insert(clean(path), contents.clone());
                     }
                 } else {
                     // Write file contents to output map
@@ -314,10 +310,7 @@ mod tests {
                     let read_result = fs::read(&cleaned_path);
                     let contents = String::from_utf8(read_result?);
                     if contents.is_ok() {
-                        output_map.insert(
-                            PathBuf::from(cleaned_path.file_name().unwrap()),
-                            contents.unwrap(),
-                        );
+                        output_map.insert(cleaned_path, contents.unwrap());
                     } else {
                         eprintln!("Failed to read contents from {:?}", cleaned_path);
                         break;
@@ -366,10 +359,20 @@ mod tests {
                 }
             }
 
-            // // Read all file contents inside dir_path and check with expected result.
+            // Read all file contents inside dir_path and check with expected result.
             let got = self.file_contents(&dir_path);
             assert!(got.is_ok());
-            assert!(got.unwrap() == self.expected);
+
+            let mut stripped_output_map = HashMap::<PathBuf, String>::new();
+            // Extract prefix path from keys in output map.
+            for (path, content) in got.unwrap() {
+                stripped_output_map.insert(
+                    PathBuf::from(path.strip_prefix(&dir_path).unwrap()),
+                    content,
+                );
+            }
+
+            assert!(stripped_output_map == self.expected);
 
             // Remove temporary dir holding test case files.
             assert!(fs::remove_dir_all(dir_path).is_ok());
