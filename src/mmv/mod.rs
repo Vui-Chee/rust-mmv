@@ -232,17 +232,19 @@ fn random_path(dir: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-
     use std::collections::HashMap;
     use std::env;
     use std::fs;
     use std::hash::Hash;
     use std::io;
     use std::path::PathBuf;
+    use std::sync::Once;
 
     use super::super::filepath::clean;
     use super::super::ioutils::temp_dir;
     use super::{build_renames, rename, EMPTY_PATH_ERROR};
+
+    static SETUP: Once = Once::new();
 
     const TESTS_DIR: &'static str = "mmv-tests";
 
@@ -329,10 +331,11 @@ mod tests {
         pub fn check(&self) {
             // Create a single common directory for all temporary files/directories.
             let tmp_path = env::temp_dir().join(TESTS_DIR);
-            if !tmp_path.exists() {
+
+            SETUP.call_once(|| {
                 // If exists, ignore error.
                 fs::create_dir(&tmp_path).ok();
-            }
+            });
 
             // Get fully resolved path to temporary folder.
             // If no canoncalize, then will not resolve symbolic links.
