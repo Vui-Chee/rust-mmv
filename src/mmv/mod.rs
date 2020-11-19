@@ -334,10 +334,6 @@ mod tests {
             // If no canoncalize, then will not resolve symbolic links.
             let tmp_path = tmp_path.canonicalize().unwrap();
 
-            // Change current directory to TESTS_DIR path.
-            assert!(env::set_current_dir(&tmp_path).is_ok());
-            assert!(env::current_dir().unwrap() == PathBuf::from(&tmp_path));
-
             // Create another temporary folder (per test case) at that location.
             // NOTE: temp_dir() will try making a unique directory if such
             // already exists.
