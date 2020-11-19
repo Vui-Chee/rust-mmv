@@ -14,21 +14,36 @@ pub struct Edge {
     pub dst: PathBuf,
 }
 
-pub fn rename(files: &HashMap<PathBuf, PathBuf>) -> Result<(), String> {
+pub fn rename(files: &HashMap<PathBuf, PathBuf>, dir: Option<&str>) -> Result<(), String> {
+    let mut dir_path = "";
+    if dir.is_some() {
+        dir_path = dir.unwrap();
+    }
+
+    // Closure to prepend leading directory to existing paths.
+    let prefix_paths = |src: &PathBuf, dst: &PathBuf| {
+        (
+            PathBuf::from(dir_path).join(src),
+            PathBuf::from(dir_path).join(dst),
+        )
+    };
+
     match build_renames(files) {
         Ok(renames) => {
             for (i, rename) in renames.iter().enumerate() {
-                if let Err(err) = do_rename(rename.src.as_path(), rename.dst.as_path()) {
+                let (src, dst) = prefix_paths(&rename.src, &rename.dst);
+
+                if let Err(err) = do_rename(src.as_path(), dst.as_path()) {
                     // Only undo if there is more than 1 previous renames.
                     // Otherwise, j - 1 yields an overflow error (since i is usize).
                     if i >= 1 {
                         let mut j = i - 1;
                         loop {
+                            // NOTE: dst is now the source path and vice-versa.
+                            let (src, dst) = prefix_paths(&renames[j].dst, &renames[j].src);
                             // Undo on error not to leave the temporary files.
                             // This does not undo directory creation.
-                            if let Err(_err) =
-                                fs::rename(renames[j].dst.as_path(), renames[j].src.as_path())
-                            {
+                            if let Err(_err) = fs::rename(src, dst) {
                                 break;
                             }
 
@@ -217,17 +232,21 @@ fn random_path(dir: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-
     use std::collections::HashMap;
     use std::env;
     use std::fs;
     use std::hash::Hash;
     use std::io;
     use std::path::PathBuf;
+    use std::sync::Once;
 
     use super::super::filepath::clean;
     use super::super::ioutils::temp_dir;
     use super::{build_renames, rename, EMPTY_PATH_ERROR};
+
+    static SETUP: Once = Once::new();
+
+    const TESTS_DIR: &'static str = "mmv-tests";
 
     type CaseInput<'a> = &'a [(&'a str, &'a str)];
 
@@ -267,9 +286,10 @@ mod tests {
             }
         }
 
-        pub fn setup(&self) -> io::Result<()> {
+        pub fn setup(&self, dir: &str) -> io::Result<()> {
             for (file, content) in &self.contents {
-                fs::write(file, content)?;
+                let loc = PathBuf::from(dir).join(file);
+                fs::write(loc, content)?;
             }
 
             Ok(())
@@ -278,24 +298,21 @@ mod tests {
         pub fn file_contents(&self, dir: &str) -> io::Result<HashMap<PathBuf, String>> {
             let mut output_map = HashMap::<PathBuf, String>::new();
             for entry in fs::read_dir(dir)? {
-                let pathbuf = clean(entry?.path().as_path());
+                let pathbuf = entry?.path();
                 if pathbuf.is_dir() {
                     // Read all files in this directory
-                    for (path, contents) in
-                        &self.file_contents(pathbuf.as_path().to_str().unwrap())?
-                    {
-                        let cleaned_path = clean(path);
-                        output_map.insert(cleaned_path, contents.clone());
+                    for (path, contents) in &self.file_contents(pathbuf.to_str().unwrap())? {
+                        output_map.insert(clean(path), contents.clone());
                     }
                 } else {
                     // Write file contents to output map
-                    let cleaned_pathbuf = clean(pathbuf.as_path());
-                    let read_result = fs::read(&cleaned_pathbuf);
+                    let cleaned_path = clean(pathbuf.as_path());
+                    let read_result = fs::read(&cleaned_path);
                     let contents = String::from_utf8(read_result?);
                     if contents.is_ok() {
-                        output_map.insert(cleaned_pathbuf, contents.unwrap());
+                        output_map.insert(cleaned_path, contents.unwrap());
                     } else {
-                        eprintln!("Failed to read contents from {:?}", cleaned_pathbuf);
+                        eprintln!("Failed to read contents from {:?}", cleaned_path);
                         break;
                     }
                 }
@@ -305,18 +322,24 @@ mod tests {
         }
 
         pub fn check(&self) {
+            // Create a single common directory for all temporary files/directories.
+            let tmp_path = env::temp_dir().join(TESTS_DIR);
+
+            SETUP.call_once(|| {
+                // If exists, ignore error.
+                fs::create_dir(&tmp_path).ok();
+            });
+
             // Get fully resolved path to temporary folder.
             // If no canoncalize, then will not resolve symbolic links.
-            let tmp_path = env::temp_dir().canonicalize().unwrap();
-            // Create another folder at that location
+            let tmp_path = tmp_path.canonicalize().unwrap();
+
+            // Create another temporary folder (per test case) at that location.
+            // NOTE: temp_dir() will try making a unique directory if such
+            // already exists.
             let dir_path = temp_dir(tmp_path.to_str().unwrap(), "mmv-").unwrap();
-
-            // Change current directory to temporary directory path.
-            assert!(env::set_current_dir(&dir_path).is_ok());
-            assert!(env::current_dir().unwrap() == PathBuf::from(&dir_path));
-
-            // Write contents to each file
-            assert!(self.setup().is_ok());
+            // Write contents to each file to individual tmp folder location.
+            assert!(self.setup(&dir_path).is_ok());
 
             // Build renames
             let renames = build_renames(&self.files);
@@ -325,19 +348,29 @@ mod tests {
                 assert!(edges.len() == self.count);
             }
 
-            // Rename files
-            if let Err(err) = rename(&self.files) {
+            // Rename files in temporary folder path, not TEST_DIR path!
+            if let Err(err) = rename(&self.files, Some(&dir_path)) {
                 if let Some(expected_err) = self.err {
                     assert_eq!(err, expected_err.to_string());
                 }
             }
 
             // Read all file contents inside dir_path and check with expected result.
-            let got = self.file_contents(".");
+            let got = self.file_contents(&dir_path);
             assert!(got.is_ok());
-            assert!(got.unwrap() == self.expected);
 
-            // Remove temp dir.
+            let mut stripped_output_map = HashMap::<PathBuf, String>::new();
+            // Extract prefix path from keys in output map.
+            for (path, content) in got.unwrap() {
+                stripped_output_map.insert(
+                    PathBuf::from(path.strip_prefix(&dir_path).unwrap()),
+                    content,
+                );
+            }
+
+            assert!(stripped_output_map == self.expected);
+
+            // Remove temporary dir holding test case files.
             assert!(fs::remove_dir_all(dir_path).is_ok());
         }
     }

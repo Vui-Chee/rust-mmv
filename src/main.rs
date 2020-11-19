@@ -2,10 +2,8 @@ extern crate clap;
 
 mod filepath;
 mod ioutils;
-mod mmv;
-
 mod macros;
-use macros::*;
+mod mmv;
 
 // Default modules
 use std::collections::{HashMap, HashSet};
@@ -121,7 +119,7 @@ pub fn run(files: Vec<&str>) -> Result<(), String> {
         .for_each(|(dst, src)| {
             src_to_dst_map.insert(PathBuf::from(src), PathBuf::from(dst));
         });
-    mmv::rename(&src_to_dst_map)?;
+    mmv::rename(&src_to_dst_map, None)?;
 
     Ok(())
 }

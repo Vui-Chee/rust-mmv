@@ -4,16 +4,6 @@
 //! For reference, see
 //! https://stackoverflow.com/questions/29963449/golang-like-defer-in-rust.
 
-pub struct ScopeCall<F: FnOnce()> {
-    pub c: Option<F>,
-}
-
-impl<F: FnOnce()> Drop for ScopeCall<F> {
-    fn drop(&mut self) {
-        self.c.take().unwrap()()
-    }
-}
-
 #[macro_export]
 macro_rules! expr {
     ($e: expr) => {
@@ -24,6 +14,16 @@ macro_rules! expr {
 #[macro_export]
 macro_rules! defer {
     ($($data: tt)*) => (
+        struct ScopeCall<F: FnOnce()> {
+            pub c: Option<F>,
+        }
+
+        impl<F: FnOnce()> Drop for ScopeCall<F> {
+            fn drop(&mut self) {
+                self.c.take().unwrap()()
+            }
+        }
+
         let _scope_call = ScopeCall {
             c: Some(|| -> () { expr!({ $($data)* }) })
         };
