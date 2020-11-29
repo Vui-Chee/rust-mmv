@@ -17,7 +17,7 @@ FLAGS:
     -V, --version    Prints version information
 ```
 
-Inspired by golang implementation of [mmv](https://github.com/itchyny/mmv)
+Inspired by golang implementation of [mmv](https://github.com/itchyny/mmv).
 
 # Build and run
 
