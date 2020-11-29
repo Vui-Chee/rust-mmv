@@ -19,8 +19,12 @@ FLAGS:
 
 Inspired by golang implementation of [mmv](https://github.com/itchyny/mmv).
 
-# Build and run
+## Build and run
 
 `cargo build --release` to build.
 
 `./target/release/fractal` to run.
+
+## Warning
+
+Not tested on Windows yet.
