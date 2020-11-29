@@ -3,7 +3,6 @@
 ## Overview
 
 ```
-Rust mmv 1.0
 Performs `mv` on multiple paths.
 
 USAGE:
