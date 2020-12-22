@@ -22,7 +22,7 @@ Inspired by golang implementation of [mmv](https://github.com/itchyny/mmv).
 
 `cargo build --release` to build.
 
-`./target/release/fractal` to run.
+`./target/release/mmv` to run.
 
 ## Warning
 
