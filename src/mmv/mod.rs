@@ -235,31 +235,28 @@ mod tests {
     use std::collections::HashMap;
     use std::env;
     use std::fs;
-    use std::hash::Hash;
     use std::io;
     use std::path::PathBuf;
     use std::sync::Once;
 
     use super::super::filepath::clean;
     use super::super::ioutils::temp_dir;
-    use super::{build_renames, rename, EMPTY_PATH_ERROR};
+
+    use super::{build_renames, rename};
+
+    macro_rules! hashmap {
+        ( $( $key:expr => $value:expr ),* ) => {
+            {
+                let mut hm = HashMap::new();
+                $(hm.insert($key, $value);)*
+                hm
+            }
+        };
+    }
 
     static SETUP: Once = Once::new();
 
     const TESTS_DIR: &'static str = "mmv-tests";
-
-    type CaseInput<'a> = &'a [(&'a str, &'a str)];
-
-    fn to_map<'a, K, V>(items: CaseInput<'a>) -> HashMap<K, V>
-    where
-        K: Eq + Hash + From<&'a str>,
-        V: From<&'a str>,
-    {
-        items
-            .iter()
-            .map(|&(key, value)| (key.into(), value.into()))
-            .collect()
-    }
 
     struct TestCase<'a> {
         pub files: HashMap<PathBuf, PathBuf>,
@@ -272,16 +269,16 @@ mod tests {
     impl<'a> TestCase<'a> {
         pub fn new(
             count: usize,
-            files: CaseInput,
-            contents: CaseInput,
-            expected: CaseInput,
+            files: HashMap<PathBuf, PathBuf>,
+            contents: HashMap<PathBuf, String>,
+            expected: HashMap<PathBuf, String>,
             err: Option<&'a str>,
         ) -> Self {
             TestCase {
                 count,
-                files: to_map::<PathBuf, PathBuf>(files),
-                contents: to_map::<PathBuf, String>(contents),
-                expected: to_map::<PathBuf, String>(expected),
+                files,
+                contents,
+                expected,
                 err,
             }
         }
@@ -377,195 +374,31 @@ mod tests {
 
     #[test]
     fn one_file() {
-        TestCase::new(1, &[("foo", "bar")], &[("foo", "0")], &[("bar", "0")], None).check();
+        TestCase::new(
+            1,
+            hashmap!(PathBuf::from("foo") => PathBuf::from("bar")),
+            hashmap!(PathBuf::from("foo") => String::from("0")),
+            hashmap!(PathBuf::from("bar") => String::from("0")),
+            None,
+        )
+        .check();
     }
 
     #[test]
     fn two_files() {
         TestCase::new(
             2,
-            &[("foo", "qux"), ("bar", "quux")],
-            &[("foo", "0"), ("bar", "1"), ("baz", "2")],
-            &[("qux", "0"), ("quux", "1"), ("baz", "2")],
-            None,
-        )
-        .check();
-    }
-
-    #[test]
-    fn swap_two_files() {
-        TestCase::new(
-            3,
-            &[("foo", "bar"), ("bar", "foo")],
-            &[("foo", "0"), ("bar", "1"), ("baz", "2")],
-            &[("bar", "0"), ("foo", "1"), ("baz", "2")],
-            None,
-        )
-        .check();
-    }
-
-    #[test]
-    fn two_swaps() {
-        TestCase::new(
-            6,
-            &[
-                ("foo", "bar"),
-                ("bar", "foo"),
-                ("baz", "qux"),
-                ("qux", "baz"),
-            ],
-            &[("foo", "0"), ("bar", "1"), ("baz", "2"), ("qux", "3")],
-            &[("bar", "0"), ("foo", "1"), ("baz", "3"), ("qux", "2")],
-            None,
-        )
-        .check();
-    }
-
-    #[test]
-    fn three_files() {
-        TestCase::new(
-            3,
-            &[("foo", "bar"), ("bar", "baz"), ("baz", "qux")],
-            &[("foo", "0"), ("bar", "1"), ("baz", "2")],
-            &[("bar", "0"), ("baz", "1"), ("qux", "2")],
-            None,
-        )
-        .check();
-    }
-
-    #[test]
-    fn cycle_three_files() {
-        TestCase::new(
-            4,
-            &[("foo", "bar"), ("bar", "baz"), ("baz", "foo")],
-            &[("foo", "0"), ("bar", "1"), ("baz", "2")],
-            &[("bar", "0"), ("baz", "1"), ("foo", "2")],
-            None,
-        )
-        .check();
-    }
-
-    #[test]
-    fn empty_source_path_error() {
-        TestCase::new(
-            0, // Does not matter
-            &[("foo", "baz"), ("", "baz")],
-            &[("foo", "0"), ("bar", "1")],
-            &[("foo", "0"), ("bar", "1")],
-            Some(EMPTY_PATH_ERROR),
-        )
-        .check();
-    }
-
-    #[test]
-    fn empty_destination_path_error() {
-        TestCase::new(
-            0, // Does not matter
-            &[("foo", "baz"), ("bar", "")],
-            &[("foo", "0"), ("bar", "1")],
-            &[("foo", "0"), ("bar", "1")],
-            Some(EMPTY_PATH_ERROR),
-        )
-        .check();
-    }
-
-    #[test]
-    fn same_destination_path_error() {
-        TestCase::new(
-            0, // Does not matter
-            &[("foo", "baz"), ("bar", "baz"), ("baz", "qux")],
-            &[("foo", "0"), ("bar", "1"), ("baz", "2")],
-            &[("foo", "0"), ("bar", "1"), ("baz", "2")],
-            Some("Duplicate destination baz"),
-        )
-        .check();
-    }
-
-    #[test]
-    fn clean_source_path() {
-        TestCase::new(
-            3,
-            &[("foo", "bar"), ("bar/", "foo/")],
-            &[("foo", "0"), ("bar", "1")],
-            &[("foo", "1"), ("bar", "0")],
-            None,
-        )
-        .check();
-    }
-
-    #[test]
-    fn clean_path_same_source() {
-        TestCase::new(
-            0, // No matter
-            &[("foo", "baz"), ("bar/../foo", "bar")],
-            &[("foo", "0"), ("bar", "1")],
-            &[("foo", "0"), ("bar", "1")],
-            Some("Duplicate source foo"),
-        )
-        .check();
-    }
-
-    #[test]
-    fn clean_path_same_destination() {
-        TestCase::new(
-            0, // No matter
-            &[("foo", "baz"), ("bar", "foo/../baz")],
-            &[("foo", "0"), ("bar", "1")],
-            &[("foo", "0"), ("bar", "1")],
-            Some("Duplicate destination baz"),
-        )
-        .check();
-    }
-
-    #[test]
-    fn same_source_and_destination() {
-        TestCase::new(
-            0, // No matter
-            &[("foo/", "foo"), ("bar/", "bar")],
-            &[("foo", "0"), ("bar", "1")],
-            &[("foo", "0"), ("bar", "1")],
-            None,
-        )
-        .check();
-    }
-
-    #[test]
-    fn same_destination_with_error() {
-        TestCase::new(
-            0, // No matter
-            &[("foo/", "foo/"), ("bar/", "foo")],
-            &[("foo", "0"), ("bar", "1")],
-            &[("foo", "0"), ("bar", "1")],
-            Some("Duplicate destination foo"),
-        )
-        .check();
-    }
-
-    #[test]
-    fn undo_on_error() {
-        TestCase::new(
-            7,
-            &[
-                ("foo", "bar"),
-                ("bar", "foo"),
-                ("baz", "qux"),
-                ("qux", "quux"),
-                ("quux", "baz"),
-            ],
-            &[("foo", "0"), ("bar", "1"), ("baz", "2"), ("qux", "3")],
-            &[("foo", "0"), ("bar", "1"), ("baz", "2"), ("qux", "3")],
-            Some("No such file or directory (os error 2)"), // No such file or directory
-        )
-        .check();
-    }
-
-    #[test]
-    fn create_destination_directory() {
-        TestCase::new(
-            3,
-            &[("foo", "x/foo"), ("bar", "x/bar"), ("baz", "a/b/c/baz")],
-            &[("foo", "0"), ("bar", "1"), ("baz", "2")],
-            &[("x/foo", "0"), ("x/bar", "1"), ("a/b/c/baz", "2")],
+            hashmap!(PathBuf::from("foo") => PathBuf::from("qux"), PathBuf::from("bar") => PathBuf::from("quux")),
+            hashmap!(
+                PathBuf::from("foo") => String::from("0"), 
+                PathBuf::from("bar") => String::from("1"), 
+                PathBuf::from("baz") => String::from("2")
+            ),
+            hashmap!(
+                PathBuf::from("qux") => String::from("0"), 
+                PathBuf::from("quux") => String::from("1"), 
+                PathBuf::from("baz") => String::from("2")
+            ),
             None,
         )
         .check();
