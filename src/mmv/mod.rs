@@ -14,7 +14,7 @@ pub struct Edge {
     pub dst: PathBuf,
 }
 
-pub fn rename(files: &HashMap<PathBuf, PathBuf>, dir: Option<&str>) -> Result<(), String> {
+pub fn rename<P: AsRef<Path>>(files: &HashMap<P, P>, dir: Option<&str>) -> Result<(), String> {
     let mut dir_path = "";
     if dir.is_some() {
         dir_path = dir.unwrap();
