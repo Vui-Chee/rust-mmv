@@ -1,0 +1,11 @@
+language: rust
+
+rust:
+  - stable
+
+cache: cargo
+
+jobs:
+  - stage: unittest
+    script:
+    - cargo test --verbose
