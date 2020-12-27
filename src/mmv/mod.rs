@@ -121,8 +121,8 @@ fn build_renames(files: &HashMap<PathBuf, PathBuf>) -> Result<Vec<Edge>, String>
             return Err(EMPTY_PATH_ERROR.to_string());
         }
 
-        let cleaned_src = clean(src.as_path());
-        let cleaned_dst = clean(dst.as_path());
+        let cleaned_src = clean(src);
+        let cleaned_dst = clean(dst);
 
         if file_map.contains_key(&cleaned_src) {
             return Err(format!("Duplicate source {}", cleaned_src.display()));
@@ -306,7 +306,7 @@ mod tests {
                     }
                 } else {
                     // Write file contents to output map
-                    let cleaned_path = clean(pathbuf.as_path());
+                    let cleaned_path = clean(pathbuf);
                     let read_result = fs::read(&cleaned_path);
                     let contents = String::from_utf8(read_result?);
                     if contents.is_ok() {
