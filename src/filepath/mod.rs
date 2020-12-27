@@ -235,8 +235,7 @@ fn test_clean() {
         ];
 
         for (path_str, expected_output) in path_strs.iter() {
-            let path = Path::new(path_str);
-            assert_eq!(clean(path).to_str(), Some(*expected_output));
+            assert_eq!(clean(path_str).to_str(), Some(*expected_output));
         }
     }
 }
