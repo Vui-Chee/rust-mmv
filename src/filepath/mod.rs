@@ -48,20 +48,21 @@ pub fn is_path_separator(c: char) -> bool {
     false
 }
 
-pub fn volume_name_len(path: &Path) -> usize {
+pub fn volume_name_len<P: AsRef<Path>>(path: P) -> usize {
     if cfg!(windows) {
-        return windows::volume_name_len(path);
+        return windows::volume_name_len(path.as_ref());
     }
 
     0
 }
 
-pub fn from_slash(path: &Path) -> PathBuf {
+pub fn from_slash<P: AsRef<Path>>(path: P) -> PathBuf {
     if os_separator() == '/' {
-        return path.to_path_buf();
+        return path.as_ref().to_path_buf();
     }
 
     let new_path = path
+        .as_ref()
         .to_str()
         .unwrap()
         .replace("/", &os_separator().to_string());
