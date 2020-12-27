@@ -9,4 +9,3 @@ jobs:
   - stage: unittest
     script:
     - cargo test --verbose
-    - rm -rf $TMPDIR/mmv-tests
