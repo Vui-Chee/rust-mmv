@@ -69,23 +69,24 @@ pub fn from_slash(path: &Path) -> PathBuf {
     PathBuf::from(new_path)
 }
 
-pub fn clean(path: &Path) -> PathBuf {
-    let path_str = match path.to_str() {
-        Some(_path_str) => _path_str,
-        None => "",
-    };
-    let path_vec = path_str.chars().collect::<Vec<char>>();
-    let vol_len = volume_name_len(path);
+pub fn clean<P: AsRef<Path>>(path: P) -> PathBuf {
+    let path_vec = path
+        .as_ref()
+        .to_str()
+        .unwrap()
+        .chars()
+        .collect::<Vec<char>>();
+    let vol_len = volume_name_len(path.as_ref());
     let path_without_vol = &path_vec[vol_len..path_vec.len()];
 
     if path_without_vol.is_empty() {
         if vol_len > 1 && path_vec[1] != ':' {
             // UNC pathing probably.
-            return from_slash(path);
+            return from_slash(path.as_ref());
         }
 
         // For empty paths, return prefix + ".".
-        let mut new_path = path.to_path_buf();
+        let mut new_path = path.as_ref().to_path_buf();
         new_path.push(".");
         return new_path;
     }
